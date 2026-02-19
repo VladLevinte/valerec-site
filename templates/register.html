@@ -1,0 +1,108 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Register - Vale Recruitment</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<header class="nav">
+  <a class="brand" href="/">
+    <img src="{{ url_for('static', filename='img/logo.png') }}" class="logo" alt="Vale Recruitment">
+    <div class="brand-text">
+      <div class="name">Vale Recruitment</div>
+      <div class="tag">Nationwide Construction Recruitment</div>
+    </div>
+  </a>
+
+  <nav class="menu">
+    <a href="/about">About</a>
+    <a href="/services">Services</a>
+    <a href="/candidates">Candidates</a>
+    <a href="/employers">Employers</a>
+    <a href="/contact">Contact</a>
+    <a class="btn" href="/register">Register</a>
+  </nav>
+</header>
+
+<main class="container">
+  <h1>Candidate Registration</h1>
+  <p class="muted">Fill in your details and we’ll contact you about suitable work.</p>
+
+  {% if error %}
+    <div class="alert">{{ error }}</div>
+  {% endif %}
+
+  <form method="POST" enctype="multipart/form-data" class="form-card">
+
+    <div class="form-grid">
+      <div class="field">
+        <label>First Name *</label>
+        <input type="text" name="first_name" required>
+      </div>
+
+      <div class="field">
+        <label>Last Name *</label>
+        <input type="text" name="last_name" required>
+      </div>
+
+      <div class="field">
+        <label>Email *</label>
+        <input type="email" name="email" required>
+      </div>
+
+      <div class="field">
+        <label>Phone *</label>
+        <input type="text" name="phone" required>
+      </div>
+
+      <div class="field">
+        <label>Town / Location *</label>
+        <input type="text" name="town" required>
+      </div>
+
+      <div class="field">
+        <label>Primary Trade *</label>
+        <input type="text" name="primary_trade" maxlength="20" required>
+      </div>
+
+      <div class="field">
+        <label>Primary Ticket *</label>
+        <input type="text" name="primary_ticket" maxlength="20" required>
+      </div>
+
+      <div class="field full">
+        <label>Additional Skills & Tickets (optional)</label>
+        <input type="text" name="additional_info" placeholder="Example: Dumper, Groundworks, CPCS A59, NPORS, SSSTS">
+      </div>
+
+      <div class="field full">
+        <label>Upload CV (optional)</label>
+        <input type="file" name="cv" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+        <div class="hint">Allowed: PDF, DOC, DOCX, JPG, PNG • Max 5MB</div>
+      </div>
+
+      <div class="field full">
+        <label>Upload Tickets (optional)</label>
+        <input type="file" name="tickets" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+        <div class="hint">Allowed: PDF, DOC, DOCX, JPG, PNG • Max 5MB</div>
+      </div>
+
+      <div class="field full">
+        <label style="display:flex; gap:10px; align-items:flex-start; font-weight:700;">
+          <input type="checkbox" name="consent" required style="margin-top:3px;">
+          <span>
+            I confirm I have read the <a href="/privacy" target="_blank">Privacy Policy</a> and agree to be contacted about work opportunities.
+          </span>
+        </label>
+      </div>
+    </div>
+
+    <button class="btn btn-wide" type="submit">Submit Registration</button>
+  </form>
+</main>
+
+</body>
+</html>

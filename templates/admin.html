@@ -1,0 +1,62 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Admin - Vale Recruitment</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<div class="container">
+  <h1>Admin</h1>
+  <p><a class="btn btn-outline" href="/admin/logout">Logout</a></p>
+
+
+  <div style="display:flex; gap:10px; margin: 12px 0;">
+    <a class="btn" href="/admin/export" style="text-align:center;">Download Registrations CSV</a>
+    <a class="btn" href="/admin/export-contacts" style="text-align:center;">Download Contacts CSV</a>
+  </div>
+
+  <h2 style="margin-top:26px;">Registrations</h2>
+
+  <table style="margin-top:12px; width:100%; border-collapse: collapse;">
+    <tr style="background:#f5f7fa;">
+      <th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Town</th><th>Trade</th><th>Ticket</th><th>Additional</th>
+    </tr>
+    {% for row in registrations %}
+    <tr>
+      <td>{{ row.id }}</td>
+      <td>{{ row.first_name }} {{ row.last_name }}</td>
+      <td>{{ row.email }}</td>
+      <td>{{ row.phone }}</td>
+      <td>{{ row.town }}</td>
+      <td>{{ row.primary_trade }}</td>
+      <td>{{ row.primary_ticket }}</td>
+      <td>{{ row.additional_info }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+
+  <h2 style="margin-top:34px;">Contact Requests</h2>
+
+  <table style="margin-top:12px; width:100%; border-collapse: collapse;">
+    <tr style="background:#f5f7fa;">
+      <th>ID</th><th>Date</th><th>Name</th><th>Email</th><th>Phone</th><th>Company</th><th>Message</th>
+    </tr>
+    {% for c in contacts %}
+    <tr>
+      <td>{{ c.id }}</td>
+      <td>{{ c.created_at[:10] }}</td>
+      <td>{{ c.name }}</td>
+      <td>{{ c.email }}</td>
+      <td>{{ c.phone }}</td>
+      <td>{{ c.company }}</td>
+      <td>{{ c.message }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+
+</div>
+
+</body>
+</html>

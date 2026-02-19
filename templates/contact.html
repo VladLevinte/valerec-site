@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>Contact</h1>
+<p class="muted">For workforce requests or general enquiries, send us a message and we’ll get back to you.</p>
+
+{% if error %}
+  <div class="alert">{{ error }}</div>
+{% endif %}
+
+<form method="POST" class="form-card" style="margin-top:16px;">
+  <div class="form-grid">
+    <div class="field">
+      <label>Name *</label>
+      <input type="text" name="name" required>
+    </div>
+
+    <div class="field">
+      <label>Email *</label>
+      <input type="email" name="email" required>
+    </div>
+
+    <div class="field">
+      <label>Phone (optional)</label>
+      <input type="text" name="phone">
+    </div>
+
+    <div class="field">
+      <label>Company (optional)</label>
+      <input type="text" name="company">
+    </div>
+
+    <div class="field full">
+      <label>Message *</label>
+      <input type="text" name="message" required placeholder="Example: Need 4x labourers in Northampton, start Monday">
+    </div>
+
+    <div class="field full">
+      <label style="display:flex; gap:10px; align-items:flex-start; font-weight:700;">
+        <input type="checkbox" name="consent" required style="margin-top:3px;">
+        <span>
+          I confirm I have read the <a href="/privacy" target="_blank">Privacy Policy</a>.
+        </span>
+      </label>
+    </div>
+  </div>
+
+  <button class="btn btn-wide" type="submit">Send Message</button>
+</form>
+
+{% endblock %}
