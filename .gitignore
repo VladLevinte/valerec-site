@@ -1,0 +1,16 @@
+# secrets / environment
+.env
+
+# virtualenv / python cache
+.venv/
+__pycache__/
+*.pyc
+
+# local database & uploads (contains personal data)
+database.db
+uploads/
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+.vscode/
