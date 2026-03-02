@@ -2,142 +2,469 @@
 {% block content %}
 
 <style>
-/* Make admin full width */
-.admin-wrapper {
-    width: 95%;
-    max-width: 1800px;
-    margin: 0 auto;
+/* ===== Layout: full width, no sideways scrolling ===== */
+.admin-wrapper{
+  width: 100%;
+  max-width: none;            /* remove the 1800px cap */
+  margin: 0 auto;
+  padding: 24px 22px;
 }
 
-/* Table styling */
-.admin-table {
-    width: 100%;
-    border-collapse: collapse;
-    table-layout: auto;
+/* Keep content aligned and readable on huge screens */
+.admin-inner{
+  max-width: 2200px;
+  margin: 0 auto;
+}
+
+/* Buttons */
+.download-btn{
+  padding: 8px 14px;
+  background: #0b1b34;
+  color: #fff;
+  text-decoration: none;
+  border-radius: 8px;
+  font-size: 14px;
+  display: inline-block;
+  border: none;
+  cursor: pointer;
+}
+.download-btn:hover{ opacity: .88; }
+.download-btn.secondary{
+  background: #1f2f4d;
+}
+.download-btn.light{
+  background: #e9eef7;
+  color: #0b1b34;
+}
+.download-btn.light:hover{ opacity: .95; }
+
+/* Toolbar */
+.admin-toolbar{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin: 16px 0 18px;
+}
+.admin-toolbar .group{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+/* Excel-like table look */
+.table-wrap{
+  width: 100%;
+  overflow: hidden; /* we are aiming to avoid horizontal scrolling */
+  border-radius: 12px;
+  border: 1px solid #e6e6e6;
+  background: #fff;
+}
+
+/* Table */
+.admin-table{
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed; /* key to prevent table from expanding wider than screen */
+  font-size: 14px;
 }
 
 .admin-table th,
-.admin-table td {
-    padding: 10px 14px;
-    text-align: left;
-    white-space: nowrap;   /* Prevent wrapping */
-    vertical-align: top;
+.admin-table td{
+  border-bottom: 1px solid #eeeeee;
+  padding: 10px 10px;
+  text-align: left;
+  vertical-align: top;
+
+  /* IMPORTANT: allow wrapping so no horizontal scroll */
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
-.admin-table th {
-    font-weight: 600;
+/* Sticky header like sheets */
+.admin-table thead th{
+  position: sticky;
+  top: 0;
+  background: #f7f9fc;
+  z-index: 2;
+  font-weight: 700;
+  border-bottom: 1px solid #e2e7f0;
 }
 
-.admin-table tr:nth-child(even) {
-    background-color: #f9f9f9;
+/* Zebra rows */
+.admin-table tbody tr:nth-child(even){
+  background-color: #fafafa;
 }
 
-.download-btn {
-    padding: 6px 12px;
-    background: #0b1b34;
-    color: white;
-    text-decoration: none;
-    border-radius: 6px;
-    font-size: 14px;
-    display: inline-block;
+/* Hover row */
+.admin-table tbody tr:hover{
+  background: #f2f6ff;
 }
 
-.download-btn:hover {
-    opacity: 0.85;
+/* Make selection feel like sheet */
+.admin-table{
+  user-select: text; /* ensures you can select/copy text normally */
 }
 
-/* Allow Additional Skills to wrap nicely (otherwise it can be too wide) */
-.admin-table td.additional,
-.admin-table th.additional {
-    white-space: normal;
-    min-width: 260px;
-    max-width: 420px;
+/* Column widths (tweak as needed) */
+.col-select{ width: 44px; }
+.col-date{ width: 110px; }
+.col-name{ width: 160px; }
+.col-email{ width: 230px; }
+.col-phone{ width: 140px; }
+.col-town{ width: 140px; }
+.col-trade{ width: 170px; }
+.col-ticket{ width: 170px; }
+.col-additional{ width: 280px; }
+.col-cv{ width: 110px; }
+.col-tickets{ width: 110px; }
+
+/* Download links inside table */
+.table-link{
+  color: #0b1b34;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.table-link:hover{ opacity: 0.85; }
+
+/* Pagination */
+.pagination{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 14px 0;
+}
+.page-pill{
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid #d8deea;
+  text-decoration: none;
+  color: #0b1b34;
+  background: #fff;
+  font-size: 14px;
+}
+.page-pill:hover{ background: #f2f6ff; }
+.page-pill.active{
+  background: #0b1b34;
+  color: #fff;
+  border-color: #0b1b34;
+  font-weight: 700;
+}
+
+/* Column picker dropdown */
+.column-picker{
+  position: relative;
+}
+.column-picker-panel{
+  position: absolute;
+  top: 44px;
+  left: 0;
+  width: 260px;
+  max-height: 320px;
+  overflow: auto;
+  background: #fff;
+  border: 1px solid #d8deea;
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(0,0,0,.08);
+  padding: 10px;
+  z-index: 20;
+  display: none;
+}
+.column-picker-panel.open{ display: block; }
+.column-picker-panel label{
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 6px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.column-picker-panel label:hover{
+  background: #f6f8fc;
+}
+.small-note{
+  font-size: 12px;
+  color: #56627a;
+  margin-left: 4px;
+}
+
+/* Mobile tweaks */
+@media (max-width: 768px){
+  .admin-wrapper{ padding: 16px 12px; }
+  .admin-table{ font-size: 13px; }
+  .col-additional{ width: 220px; }
 }
 </style>
 
 <div class="admin-wrapper">
+  <div class="admin-inner">
 
-  <h1>Admin Dashboard </h1>
+    <h1 style="margin:0 0 10px;">Admin Dashboard</h1>
 
-  <div style="margin: 20px 0;">
-    <a class="download-btn" href="{{ url_for('export_candidates_csv') }}">Download Candidates CSV</a>
-    <a class="download-btn" href="{{ url_for('export_contacts_csv') }}">Download Contacts CSV</a>
-    <a class="download-btn" href="{{ url_for('admin_logout') }}">Logout</a>
-  </div>
+    <div class="admin-toolbar">
+      <div class="group">
+        <a class="download-btn" href="{{ url_for('export_candidates_csv') }}">Download Candidates CSV</a>
+        <a class="download-btn" href="{{ url_for('export_contacts_csv') }}">Download Contacts CSV</a>
+        <a class="download-btn" href="{{ url_for('admin_logout') }}">Logout</a>
+      </div>
+    </div>
 
-  <h2>Registrations</h2>
+    <h2 style="margin: 18px 0 8px;">Registrations</h2>
 
-  <!-- Pagination Top -->
-  <div style="margin-bottom:20px;">
-    {% for p in range(1, total_pages + 1) %}
+    <!-- Copy toolbar -->
+    <div class="admin-toolbar" style="margin-top: 8px;">
+      <div class="group">
+        <button class="download-btn secondary" id="selectAllBtn" type="button">Select all rows</button>
+        <button class="download-btn secondary" id="clearSelectionBtn" type="button">Clear selection</button>
+
+        <div class="column-picker">
+          <button class="download-btn light" id="toggleColumnsBtn" type="button">
+            Choose columns to copy
+          </button>
+          <div class="column-picker-panel" id="columnsPanel">
+            <div style="display:flex; gap:8px; margin-bottom:8px;">
+              <button class="download-btn secondary" id="colsAllBtn" type="button" style="padding:6px 10px;">All</button>
+              <button class="download-btn secondary" id="colsNoneBtn" type="button" style="padding:6px 10px;">None</button>
+            </div>
+
+            <!-- Default: the “useful” columns checked -->
+            <label><input type="checkbox" class="col-check" data-col="date"> Date</label>
+            <label><input type="checkbox" class="col-check" data-col="name" checked> Name</label>
+            <label><input type="checkbox" class="col-check" data-col="email" checked> Email</label>
+            <label><input type="checkbox" class="col-check" data-col="phone" checked> Phone</label>
+            <label><input type="checkbox" class="col-check" data-col="town"> Town</label>
+            <label><input type="checkbox" class="col-check" data-col="trade" checked> Primary trade</label>
+            <label><input type="checkbox" class="col-check" data-col="ticket"> Primary ticket</label>
+            <label><input type="checkbox" class="col-check" data-col="additional"> Additional skills</label>
+          </div>
+        </div>
+
+        <button class="download-btn" id="copyBtn" type="button">Copy selected (paste into Sheets)</button>
+        <span class="small-note" id="copyStatus"></span>
+      </div>
+    </div>
+
+    <!-- Pagination Top -->
+    <div class="pagination">
+      {% for p in range(1, total_pages + 1) %}
         {% if p == page %}
-            <strong style="margin-right:8px;">{{ p }}</strong>
+          <span class="page-pill active">{{ p }}</span>
         {% else %}
-            <a class="download-btn" style="margin-right:8px;" href="{{ url_for('admin_dashboard', page=p) }}">{{ p }}</a>
+          <a class="page-pill" href="{{ url_for('admin_dashboard', page=p) }}">{{ p }}</a>
         {% endif %}
-    {% endfor %}
-  </div>
-
-  <table class="admin-table">
-    <thead>
-      <tr>
-        <th>Date</th>
-        <th>Name</th>
-        <th>Email</th>
-        <th>Phone</th>
-        <th>Town</th>
-        <th>Primary trade</th>
-        <th>Primary ticket</th>
-        <th class="additional">Additional skills</th>
-        <th>CV</th>
-        <th>Tickets</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for c in candidates %}
-      <tr>
-        <td>{{ c["created_date"] }}</td>
-        <td>{{ c["first_name"] }} {{ c["last_name"] }}</td>
-        <td>{{ c["email"] }}</td>
-        <td>{{ c["phone"] }}</td>
-        <td>{{ c["town"] }}</td>
-        <td>{{ c["primary_trade"] }}</td>
-        <td>{{ c["primary_ticket"] }}</td>
-        <td class="additional">{{ c["additional_info"] or "" }}</td>
-
-        <td>
-          {% if c["cv_filename"] %}
-            <a class="download-btn" href="{{ url_for('admin_download', filename=c['cv_filename']) }}">Download</a>
-          {% else %}
-            —
-          {% endif %}
-        </td>
-
-        <td>
-          {% if c["tickets_filename"] %}
-            <a class="download-btn" href="{{ url_for('admin_download', filename=c['tickets_filename']) }}">Download</a>
-          {% else %}
-            —
-          {% endif %}
-        </td>
-      </tr>
       {% endfor %}
-    </tbody>
-  </table>
+      <span class="small-note">Page {{ page }} of {{ total_pages }}</span>
+    </div>
 
-  <!-- Pagination Bottom -->
-  <div style="margin-top:25px;">
-    {% for p in range(1, total_pages + 1) %}
+    <div class="table-wrap">
+      <table class="admin-table" id="adminTable">
+        <thead>
+          <tr>
+            <th class="col-select">
+              <input type="checkbox" id="masterRowCheck" title="Select all rows on this page">
+            </th>
+            <th class="col-date">Date</th>
+            <th class="col-name">Name</th>
+            <th class="col-email">Email</th>
+            <th class="col-phone">Phone</th>
+            <th class="col-town">Town</th>
+            <th class="col-trade">Primary trade</th>
+            <th class="col-ticket">Primary ticket</th>
+            <th class="col-additional">Additional skills</th>
+            <th class="col-cv">CV</th>
+            <th class="col-tickets">Tickets</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in candidates %}
+          <tr class="data-row">
+            <td class="col-select">
+              <input type="checkbox" class="row-check">
+            </td>
+
+            <!-- data-* is used for copying -->
+            <td data-col="date">{{ c["created_date"] }}</td>
+            <td data-col="name">{{ c["first_name"] }} {{ c["last_name"] }}</td>
+            <td data-col="email">{{ c["email"] }}</td>
+            <td data-col="phone">{{ c["phone"] }}</td>
+            <td data-col="town">{{ c["town"] }}</td>
+            <td data-col="trade">{{ c["primary_trade"] }}</td>
+            <td data-col="ticket">{{ c["primary_ticket"] }}</td>
+            <td data-col="additional">{{ c["additional_info"] or "" }}</td>
+
+            <td>
+              {% if c["cv_filename"] %}
+                <a class="table-link" href="{{ url_for('admin_download', filename=c['cv_filename']) }}">Download</a>
+              {% else %}
+                —
+              {% endif %}
+            </td>
+
+            <td>
+              {% if c["tickets_filename"] %}
+                <a class="table-link" href="{{ url_for('admin_download', filename=c['tickets_filename']) }}">Download</a>
+              {% else %}
+                —
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination Bottom -->
+    <div class="pagination" style="margin-top: 18px;">
+      {% for p in range(1, total_pages + 1) %}
         {% if p == page %}
-            <strong style="margin-right:8px;">{{ p }}</strong>
+          <span class="page-pill active">{{ p }}</span>
         {% else %}
-            <a class="download-btn" style="margin-right:8px;" href="{{ url_for('admin_dashboard', page=p) }}">{{ p }}</a>
+          <a class="page-pill" href="{{ url_for('admin_dashboard', page=p) }}">{{ p }}</a>
         {% endif %}
-    {% endfor %}
-  </div>
+      {% endfor %}
+    </div>
 
+  </div>
 </div>
 
+<script>
+(function(){
+  const table = document.getElementById('adminTable');
+  const copyBtn = document.getElementById('copyBtn');
+  const statusEl = document.getElementById('copyStatus');
+
+  const masterRowCheck = document.getElementById('masterRowCheck');
+  const selectAllBtn = document.getElementById('selectAllBtn');
+  const clearSelectionBtn = document.getElementById('clearSelectionBtn');
+
+  const toggleColumnsBtn = document.getElementById('toggleColumnsBtn');
+  const columnsPanel = document.getElementById('columnsPanel');
+  const colsAllBtn = document.getElementById('colsAllBtn');
+  const colsNoneBtn = document.getElementById('colsNoneBtn');
+  const colChecks = Array.from(document.querySelectorAll('.col-check'));
+
+  function setStatus(msg){
+    statusEl.textContent = msg || '';
+    if(msg){
+      setTimeout(()=>{ statusEl.textContent=''; }, 2500);
+    }
+  }
+
+  // Column picker open/close
+  toggleColumnsBtn.addEventListener('click', () => {
+    columnsPanel.classList.toggle('open');
+  });
+  document.addEventListener('click', (e) => {
+    if (!columnsPanel.contains(e.target) && !toggleColumnsBtn.contains(e.target)) {
+      columnsPanel.classList.remove('open');
+    }
+  });
+
+  // Columns all/none
+  colsAllBtn.addEventListener('click', () => {
+    colChecks.forEach(ch => ch.checked = true);
+  });
+  colsNoneBtn.addEventListener('click', () => {
+    colChecks.forEach(ch => ch.checked = false);
+  });
+
+  // Row selection helpers
+  function setAllRowChecks(value){
+    table.querySelectorAll('tbody .row-check').forEach(cb => cb.checked = value);
+    masterRowCheck.checked = value;
+  }
+
+  masterRowCheck.addEventListener('change', () => setAllRowChecks(masterRowCheck.checked));
+  selectAllBtn.addEventListener('click', () => setAllRowChecks(true));
+  clearSelectionBtn.addEventListener('click', () => setAllRowChecks(false));
+
+  // Copy logic (TSV so it pastes into Excel/Sheets)
+  function getSelectedColumns(){
+    const cols = colChecks.filter(ch => ch.checked).map(ch => ch.dataset.col);
+    return cols;
+  }
+
+  function escapeCell(text){
+    // For TSV pasting, just normalize whitespace/newlines
+    return String(text ?? '').replace(/\r?\n/g, ' ').trim();
+  }
+
+  async function copyToClipboard(text){
+    // Clipboard API
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    ta.style.top = '-9999px';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return ok;
+  }
+
+  copyBtn.addEventListener('click', async () => {
+    const selectedCols = getSelectedColumns();
+    if (selectedCols.length === 0){
+      setStatus('Choose at least one column to copy.');
+      return;
+    }
+
+    const rows = Array.from(table.querySelectorAll('tbody tr.data-row'));
+    const selectedRows = rows.filter(r => r.querySelector('.row-check')?.checked);
+
+    // If user didn't select rows, copy ALL rows on the page
+    const rowsToCopy = selectedRows.length ? selectedRows : rows;
+
+    // Header row (nice for pasting into sheets)
+    const headerMap = {
+      date: 'Date',
+      name: 'Name',
+      email: 'Email',
+      phone: 'Phone',
+      town: 'Town',
+      trade: 'Primary trade',
+      ticket: 'Primary ticket',
+      additional: 'Additional skills'
+    };
+
+    const lines = [];
+
+    // Add headers
+    lines.push(selectedCols.map(c => headerMap[c] || c).join('\t'));
+
+    // Add rows
+    for (const row of rowsToCopy){
+      const cells = selectedCols.map(colKey => {
+        const td = row.querySelector(`[data-col="${colKey}"]`);
+        return escapeCell(td ? td.textContent : '');
+      });
+      lines.push(cells.join('\t'));
+    }
+
+    const tsv = lines.join('\n');
+
+    try{
+      const ok = await copyToClipboard(tsv);
+      if (ok) {
+        setStatus(`Copied ${rowsToCopy.length} row(s) ✓ (paste into Google Sheets/Excel)`);
+      } else {
+        setStatus('Copy failed. Try selecting text manually.');
+      }
+    } catch(err){
+      setStatus('Copy failed. Try selecting text manually.');
+    }
+  });
+})();
+</script>
 
 {% endblock %}
-
