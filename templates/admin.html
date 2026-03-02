@@ -1,62 +1,141 @@
-<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>Admin - Vale Recruitment</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
+{% extends "base.html" %}
+{% block content %}
 
-<div class="container">
-  <h1>Admin</h1>
-  <p><a class="btn btn-outline" href="/admin/logout">Logout</a></p>
+<style>
+/* Make admin full width */
+.admin-wrapper {
+    width: 95%;
+    max-width: 1800px;
+    margin: 0 auto;
+}
 
+/* Table styling */
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: auto;
+}
 
-  <div style="display:flex; gap:10px; margin: 12px 0;">
-    <a class="btn" href="/admin/export" style="text-align:center;">Download Registrations CSV</a>
-    <a class="btn" href="/admin/export-contacts" style="text-align:center;">Download Contacts CSV</a>
+.admin-table th,
+.admin-table td {
+    padding: 10px 14px;
+    text-align: left;
+    white-space: nowrap;   /* Prevent wrapping */
+    vertical-align: top;
+}
+
+.admin-table th {
+    font-weight: 600;
+}
+
+.admin-table tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+.download-btn {
+    padding: 6px 12px;
+    background: #0b1b34;
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+    font-size: 14px;
+    display: inline-block;
+}
+
+.download-btn:hover {
+    opacity: 0.85;
+}
+
+/* Allow Additional Skills to wrap nicely (otherwise it can be too wide) */
+.admin-table td.additional,
+.admin-table th.additional {
+    white-space: normal;
+    min-width: 260px;
+    max-width: 420px;
+}
+</style>
+
+<div class="admin-wrapper">
+
+  <h1>Admin Dashboard</h1>
+
+  <div style="margin: 20px 0;">
+    <a class="download-btn" href="{{ url_for('export_candidates_csv') }}">Download Candidates CSV</a>
+    <a class="download-btn" href="{{ url_for('export_contacts_csv') }}">Download Contacts CSV</a>
+    <a class="download-btn" href="{{ url_for('admin_logout') }}">Logout</a>
   </div>
 
-  <h2 style="margin-top:26px;">Registrations</h2>
+  <h2>Registrations</h2>
 
-  <table style="margin-top:12px; width:100%; border-collapse: collapse;">
-    <tr style="background:#f5f7fa;">
-      <th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Town</th><th>Trade</th><th>Ticket</th><th>Additional</th>
-    </tr>
-    {% for row in registrations %}
-    <tr>
-      <td>{{ row.id }}</td>
-      <td>{{ row.first_name }} {{ row.last_name }}</td>
-      <td>{{ row.email }}</td>
-      <td>{{ row.phone }}</td>
-      <td>{{ row.town }}</td>
-      <td>{{ row.primary_trade }}</td>
-      <td>{{ row.primary_ticket }}</td>
-      <td>{{ row.additional_info }}</td>
-    </tr>
+  <!-- Pagination Top -->
+  <div style="margin-bottom:20px;">
+    {% for p in range(1, total_pages + 1) %}
+        {% if p == page %}
+            <strong style="margin-right:8px;">{{ p }}</strong>
+        {% else %}
+            <a class="download-btn" style="margin-right:8px;" href="{{ url_for('admin_dashboard', page=p) }}">{{ p }}</a>
+        {% endif %}
     {% endfor %}
+  </div>
+
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Phone</th>
+        <th>Town</th>
+        <th>Primary trade</th>
+        <th>Primary ticket</th>
+        <th class="additional">Additional skills</th>
+        <th>CV</th>
+        <th>Tickets</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in candidates %}
+      <tr>
+        <td>{{ c["created_date"] }}</td>
+        <td>{{ c["first_name"] }} {{ c["last_name"] }}</td>
+        <td>{{ c["email"] }}</td>
+        <td>{{ c["phone"] }}</td>
+        <td>{{ c["town"] }}</td>
+        <td>{{ c["primary_trade"] }}</td>
+        <td>{{ c["primary_ticket"] }}</td>
+        <td class="additional">{{ c["additional_info"] or "" }}</td>
+
+        <td>
+          {% if c["cv_filename"] %}
+            <a class="download-btn" href="{{ url_for('admin_download', filename=c['cv_filename']) }}">Download</a>
+          {% else %}
+            —
+          {% endif %}
+        </td>
+
+        <td>
+          {% if c["tickets_filename"] %}
+            <a class="download-btn" href="{{ url_for('admin_download', filename=c['tickets_filename']) }}">Download</a>
+          {% else %}
+            —
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
   </table>
 
-  <h2 style="margin-top:34px;">Contact Requests</h2>
-
-  <table style="margin-top:12px; width:100%; border-collapse: collapse;">
-    <tr style="background:#f5f7fa;">
-      <th>ID</th><th>Date</th><th>Name</th><th>Email</th><th>Phone</th><th>Company</th><th>Message</th>
-    </tr>
-    {% for c in contacts %}
-    <tr>
-      <td>{{ c.id }}</td>
-      <td>{{ c.created_at[:10] }}</td>
-      <td>{{ c.name }}</td>
-      <td>{{ c.email }}</td>
-      <td>{{ c.phone }}</td>
-      <td>{{ c.company }}</td>
-      <td>{{ c.message }}</td>
-    </tr>
+  <!-- Pagination Bottom -->
+  <div style="margin-top:25px;">
+    {% for p in range(1, total_pages + 1) %}
+        {% if p == page %}
+            <strong style="margin-right:8px;">{{ p }}</strong>
+        {% else %}
+            <a class="download-btn" style="margin-right:8px;" href="{{ url_for('admin_dashboard', page=p) }}">{{ p }}</a>
+        {% endif %}
     {% endfor %}
-  </table>
+  </div>
 
 </div>
 
-</body>
-</html>
+{% endblock %}
