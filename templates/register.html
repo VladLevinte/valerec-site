@@ -35,7 +35,7 @@
     <div class="alert">{{ error }}</div>
   {% endif %}
 
-  <form method="POST" enctype="multipart/form-data" class="form-card">
+  <form method="POST" enctype="multipart/form-data" class="form-card" id="registerForm">
 
     <div class="form-grid">
       <div class="field">
@@ -84,23 +84,36 @@
         <div class="hint">Allowed: PDF, DOC, DOCX, JPG, PNG • Max 5MB</div>
       </div>
 
-      <!-- UPDATED TICKETS SECTION -->
+      <!-- ✅ NEW Tickets UI -->
       <div class="field full">
         <label>Upload Tickets (optional — up to 5 files)</label>
 
-        <div style="
-            display:grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap:10px;
+        <!-- This input is ONLY for picking files; we will manage the real files list in JS -->
+        <input
+          type="file"
+          id="ticketsPicker"
+          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+          multiple
+        >
+        <div class="hint">Select up to 5 files total • Allowed: PDF, DOC, DOCX, JPG, PNG • Max 5MB each</div>
+
+        <!-- Selected files list -->
+        <div id="ticketsList" style="
+          margin-top:10px;
+          border:1px solid #e6e6e6;
+          border-radius:12px;
+          padding:10px;
+          background:#fff;
+          display:none;
         ">
-          <input type="file" name="tickets" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
-          <input type="file" name="tickets" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
-          <input type="file" name="tickets" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
-          <input type="file" name="tickets" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
-          <input type="file" name="tickets" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+          <div style="font-weight:700; margin-bottom:8px;">Selected tickets:</div>
+          <div id="ticketsItems" style="display:flex; flex-direction:column; gap:8px;"></div>
         </div>
 
-        <div class="hint">Up to 5 files • Allowed: PDF, DOC, DOCX, JPG, PNG • Max 5MB each</div>
+        <!-- Hidden container where we inject the real file inputs named="tickets" -->
+        <div id="ticketsHiddenInputs" style="display:none;"></div>
+
+        <div id="ticketsError" style="margin-top:8px; color:#b00020; font-size:13px; display:none;"></div>
       </div>
 
       <div class="field full">
@@ -116,6 +129,157 @@
     <button class="btn btn-wide" type="submit">Submit Registration</button>
   </form>
 </main>
+
+<script>
+(function(){
+  const MAX_FILES = 5;
+
+  const picker = document.getElementById('ticketsPicker');
+  const listBox = document.getElementById('ticketsList');
+  const itemsWrap = document.getElementById('ticketsItems');
+  const hiddenWrap = document.getElementById('ticketsHiddenInputs');
+  const err = document.getElementById('ticketsError');
+
+  // We keep our own list of File objects
+  let files = [];
+
+  function showError(msg){
+    if(!msg){
+      err.style.display = 'none';
+      err.textContent = '';
+      return;
+    }
+    err.style.display = 'block';
+    err.textContent = msg;
+  }
+
+  function formatBytes(bytes){
+    if (!bytes && bytes !== 0) return '';
+    const units = ['B','KB','MB','GB'];
+    let i = 0;
+    let n = bytes;
+    while(n >= 1024 && i < units.length-1){ n /= 1024; i++; }
+    return `${n.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+  }
+
+  function rebuildHiddenInputs(){
+    // Create real inputs named="tickets" for backend
+    hiddenWrap.innerHTML = '';
+
+    files.forEach((file, idx) => {
+      const dt = new DataTransfer();
+      dt.items.add(file);
+
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.name = 'tickets'; // backend uses getlist("tickets")
+      input.files = dt.files;
+
+      hiddenWrap.appendChild(input);
+    });
+  }
+
+  function render(){
+    // Show/hide list
+    if(files.length === 0){
+      listBox.style.display = 'none';
+      itemsWrap.innerHTML = '';
+      rebuildHiddenInputs();
+      return;
+    }
+    listBox.style.display = 'block';
+
+    itemsWrap.innerHTML = '';
+    files.forEach((file, idx) => {
+      const row = document.createElement('div');
+      row.style.display = 'flex';
+      row.style.alignItems = 'center';
+      row.style.justifyContent = 'space-between';
+      row.style.gap = '10px';
+      row.style.padding = '10px';
+      row.style.border = '1px solid #eef0f4';
+      row.style.borderRadius = '10px';
+      row.style.background = '#fafafa';
+
+      const left = document.createElement('div');
+      left.style.display = 'flex';
+      left.style.flexDirection = 'column';
+      left.style.gap = '2px';
+
+      const name = document.createElement('div');
+      name.style.fontWeight = '700';
+      name.textContent = file.name;
+
+      const meta = document.createElement('div');
+      meta.style.fontSize = '12px';
+      meta.style.color = '#56627a';
+      meta.textContent = `${formatBytes(file.size)}`;
+
+      left.appendChild(name);
+      left.appendChild(meta);
+
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.setAttribute('aria-label', 'Remove file');
+      removeBtn.textContent = '✕';
+      removeBtn.style.border = 'none';
+      removeBtn.style.background = '#0b1b34';
+      removeBtn.style.color = '#fff';
+      removeBtn.style.borderRadius = '8px';
+      removeBtn.style.padding = '8px 10px';
+      removeBtn.style.cursor = 'pointer';
+
+      removeBtn.addEventListener('click', () => {
+        files.splice(idx, 1);
+        showError('');
+        render();
+      });
+
+      row.appendChild(left);
+      row.appendChild(removeBtn);
+      itemsWrap.appendChild(row);
+    });
+
+    rebuildHiddenInputs();
+  }
+
+  function isAllowedFile(name){
+    const ext = (name.split('.').pop() || '').toLowerCase();
+    return ['pdf','doc','docx','jpg','jpeg','png'].includes(ext);
+  }
+
+  picker.addEventListener('change', () => {
+    const picked = Array.from(picker.files || []);
+    if(picked.length === 0) return;
+
+    // Validate + add (without wiping existing)
+    for(const f of picked){
+      if(files.length >= MAX_FILES){
+        showError(`You can upload up to ${MAX_FILES} ticket files.`);
+        break;
+      }
+      if(!isAllowedFile(f.name)){
+        showError('Invalid file type. Use PDF, DOC, DOCX, JPG or PNG.');
+        continue;
+      }
+
+      // Avoid exact duplicates (same name + size) if user re-selects
+      const dup = files.some(x => x.name === f.name && x.size === f.size);
+      if(!dup){
+        files.push(f);
+      }
+    }
+
+    // Reset picker so selecting the same file again still triggers change
+    picker.value = '';
+
+    render();
+  });
+
+  // Initial render
+  render();
+})();
+</script>
 
 </body>
 </html>
