@@ -1,0 +1,101 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>New Starter Registration - Vale Recruitment</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<header class="nav">
+  <a class="brand" href="/">
+    <img src="{{ url_for('static', filename='img/logo.png') }}" class="logo" alt="Vale Recruitment">
+    <div class="brand-text">
+      <div class="name">Vale Recruitment</div>
+      <div class="tag">Nationwide Construction Recruitment</div>
+    </div>
+  </a>
+
+  <!-- IMPORTANT: no menu links here (hidden link page) -->
+</header>
+
+<main class="container">
+  <h1>New Starter Registration</h1>
+  <p class="muted">Please complete all details below so we can set you up for work and payments.</p>
+
+  {% if error %}
+    <div class="alert">{{ error }}</div>
+  {% endif %}
+
+  <form method="POST" enctype="multipart/form-data" class="form-card">
+
+    <div class="form-grid">
+      <div class="field">
+        <label>First Name *</label>
+        <input type="text" name="first_name" required autocomplete="given-name">
+      </div>
+
+      <div class="field">
+        <label>Last Name *</label>
+        <input type="text" name="last_name" required autocomplete="family-name">
+      </div>
+
+      <div class="field">
+        <label>Email *</label>
+        <input type="email" name="email" required autocomplete="email">
+      </div>
+
+      <div class="field">
+        <label>Phone *</label>
+        <input type="tel" name="phone" required autocomplete="tel" inputmode="tel">
+      </div>
+
+      <div class="field">
+        <label>Town / Location *</label>
+        <input type="text" name="town" required autocomplete="address-level2">
+      </div>
+
+      <div class="field">
+        <label>Primary Trade *</label>
+        <input type="text" name="primary_trade" required>
+      </div>
+
+      <div class="field">
+        <label>Primary Tickets *</label>
+        <input type="text" name="primary_ticket" required>
+      </div>
+
+      <div class="field">
+        <label>UTR (optional)</label>
+        <input type="text" name="utr" inputmode="numeric" placeholder="If you have one">
+      </div>
+
+      <div class="field">
+        <label>National Insurance Number *</label>
+        <input type="text" name="national_insurance" required placeholder="e.g. QQ123456C" autocapitalize="characters">
+      </div>
+
+      <div class="field">
+        <label>Sort Code *</label>
+        <input type="text" name="sort_code" required inputmode="numeric" placeholder="e.g. 12-34-56">
+      </div>
+
+      <div class="field">
+        <label>Account Number *</label>
+        <input type="text" name="account_number" required inputmode="numeric" placeholder="e.g. 12345678">
+      </div>
+
+      <div class="field full">
+        <label>Passport / Birth Certificate (photo or PDF) *</label>
+        <input type="file" name="id_document" required accept=".jpg,.jpeg,.png,.pdf">
+        <div class="hint">Allowed: JPG, PNG, PDF • Max 5MB</div>
+      </div>
+    </div>
+
+    <button class="btn btn-wide" type="submit">Submit</button>
+  </form>
+</main>
+
+</body>
+</html>
