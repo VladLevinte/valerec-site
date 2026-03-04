@@ -84,12 +84,21 @@
         <div class="hint">Allowed: PDF, DOC, DOCX, JPG, PNG • Max 5MB</div>
       </div>
 
-     <div class="field full">
-  <label>Upload Tickets (optional – up to 5 files)</label>
-  <input type="file" name="tickets" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" multiple>
-  <div class="hint">You can upload up to 5 files • Allowed: PDF, DOC, DOCX, JPG, PNG • Max 5MB each</div>
-</div>
-      
+      <!-- UPDATED: Tickets can be added one-by-one (up to 5) without replacing previous selection -->
+      <div class="field full">
+        <label>Upload Tickets (optional — up to 5 files)</label>
+
+        <div id="ticketsInputs" style="display:flex; flex-direction:column; gap:10px;">
+          <input type="file" name="tickets" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+        </div>
+
+        <button type="button" class="btn" id="addTicketBtn" style="margin-top:10px;">
+          Add another ticket
+        </button>
+
+        <div class="hint">Up to 5 files • Allowed: PDF, DOC, DOCX, JPG, PNG • Max 5MB each</div>
+      </div>
+
       <div class="field full">
         <label style="display:flex; gap:10px; align-items:flex-start; font-weight:700;">
           <input type="checkbox" name="consent" required style="margin-top:3px;">
@@ -104,6 +113,33 @@
   </form>
 </main>
 
+<script>
+(function(){
+  const maxFiles = 5;
+  const wrap = document.getElementById("ticketsInputs");
+  const btn = document.getElementById("addTicketBtn");
+
+  btn.addEventListener("click", function(){
+    const count = wrap.querySelectorAll('input[type="file"]').length;
+    if(count >= maxFiles){
+      btn.disabled = true;
+      btn.textContent = "Max 5 tickets added";
+      return;
+    }
+
+    const input = document.createElement("input");
+    input.type = "file";
+    input.name = "tickets";
+    input.accept = ".pdf,.doc,.docx,.jpg,.jpeg,.png";
+    wrap.appendChild(input);
+
+    if(count + 1 >= maxFiles){
+      btn.disabled = true;
+      btn.textContent = "Max 5 tickets added";
+    }
+  });
+})();
+</script>
+
 </body>
 </html>
-
