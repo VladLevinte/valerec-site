@@ -142,6 +142,7 @@ def admin_logout():
     return redirect(url_for("home"))
 
 
+# ---------------- Public pages ----------------
 @app.route("/")
 def home():
     return render_template("home.html")
@@ -177,7 +178,6 @@ def contact():
     error = None
 
     if request.method == "POST":
-
         name = request.form["name"]
         email = request.form["email"]
         phone = request.form.get("phone", "")
@@ -193,13 +193,11 @@ def contact():
 
         conn = sqlite3.connect(DB_NAME)
         c = conn.cursor()
-
         c.execute("""
             INSERT INTO contact_requests
             (name,email,phone,company,message,created_at,created_date,consent,consent_at)
             VALUES (?,?,?,?,?,?,?,?,?)
-        """,(name,email,phone,company,message,now_ts,now_date,consent,now_ts))
-
+        """, (name, email, phone, company, message, now_ts, now_date, consent, now_ts))
         conn.commit()
         conn.close()
 
@@ -208,147 +206,133 @@ def contact():
     return render_template("contact.html", error=error)
 
 
-@app.route("/register", methods=["GET","POST"])
+# ---------------- New Candidates (/register) ----------------
+@app.route("/register", methods=["GET", "POST"])
 def register():
+    error = None
 
-    error=None
+    if request.method == "POST":
+        first_name = request.form["first_name"]
+        last_name = request.form["last_name"]
+        email = request.form["email"]
+        phone = request.form["phone"]
+        town = request.form["town"]
+        primary_trade = request.form["primary_trade"]
+        primary_ticket = request.form["primary_ticket"]
+        additional_info = request.form.get("additional_info", "")
 
-    if request.method=="POST":
+        consent = 1 if request.form.get("consent") == "on" else 0
+        if consent != 1:
+            return render_template("register.html", error="Please confirm privacy policy.")
 
-        first_name=request.form["first_name"]
-        last_name=request.form["last_name"]
-        email=request.form["email"]
-        phone=request.form["phone"]
-        town=request.form["town"]
-        primary_trade=request.form["primary_trade"]
-        primary_ticket=request.form["primary_ticket"]
-        additional_info=request.form.get("additional_info","")
+        cv_filename = None
+        tickets_filename = None
 
-        consent=1 if request.form.get("consent")=="on" else 0
-
-        if consent!=1:
-            return render_template("register.html",error="Please confirm privacy policy.")
-
-        cv_filename=None
-        tickets_filename=None
-
-        cv_file=request.files.get("cv")
-
+        cv_file = request.files.get("cv")
         if cv_file and cv_file.filename:
-
             if not allowed_file(cv_file.filename):
-                return render_template("register.html",error="Invalid CV file type.")
+                return render_template("register.html", error="Invalid CV file type.")
+            safe = secure_filename(cv_file.filename)
+            cv_filename = f"{first_name}_{last_name}_CV_{safe}"
+            cv_file.save(os.path.join(UPLOAD_FOLDER, cv_filename))
 
-            safe=secure_filename(cv_file.filename)
-            cv_filename=f"{first_name}_{last_name}_CV_{safe}"
-            cv_file.save(os.path.join(UPLOAD_FOLDER,cv_filename))
+        ticket_files = request.files.getlist("tickets")
+        ticket_files = [f for f in ticket_files if f and f.filename]
 
-        ticket_files=request.files.getlist("tickets")
-        ticket_files=[f for f in ticket_files if f and f.filename]
+        if len(ticket_files) > MAX_TICKETS_FILES:
+            return render_template("register.html", error=f"You can upload up to {MAX_TICKETS_FILES} ticket files.")
 
-        saved=[]
-
-        for idx,f in enumerate(ticket_files,start=1):
-
+        saved = []
+        for idx, f in enumerate(ticket_files, start=1):
             if not allowed_file(f.filename):
-                return render_template("register.html",error="Invalid ticket file type.")
-
-            safe=secure_filename(f.filename)
-            filename=f"{first_name}_{last_name}_TICKET{idx}_{safe}"
-            f.save(os.path.join(UPLOAD_FOLDER,filename))
+                return render_template("register.html", error="Invalid ticket file type.")
+            safe = secure_filename(f.filename)
+            filename = f"{first_name}_{last_name}_TICKET{idx}_{safe}"
+            f.save(os.path.join(UPLOAD_FOLDER, filename))
             saved.append(filename)
 
         if saved:
-            tickets_filename="|".join(saved)
+            tickets_filename = "|".join(saved)
 
-        now_ts=datetime.utcnow().isoformat()
-        now_date=datetime.utcnow().date().isoformat()
+        now_ts = datetime.utcnow().isoformat()
+        now_date = datetime.utcnow().date().isoformat()
 
-        conn=sqlite3.connect(DB_NAME)
-        c=conn.cursor()
-
+        conn = sqlite3.connect(DB_NAME)
+        c = conn.cursor()
         c.execute("""
             INSERT INTO registrations
             (first_name,last_name,email,phone,town,primary_trade,primary_ticket,
-            additional_info,cv_filename,tickets_filename,consent,consent_at,created_date)
+             additional_info,cv_filename,tickets_filename,consent,consent_at,created_date)
             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
-        """,(first_name,last_name,email,phone,town,primary_trade,primary_ticket,
-            additional_info,cv_filename,tickets_filename,consent,now_ts,now_date))
-
+        """, (first_name, last_name, email, phone, town, primary_trade, primary_ticket,
+              additional_info, cv_filename, tickets_filename, consent, now_ts, now_date))
         conn.commit()
         conn.close()
 
         return redirect(url_for("thanks"))
 
-    return render_template("register.html",error=error)
+    return render_template("register.html", error=error)
 
 
-@app.route("/candidateRegister", methods=["GET","POST"])
+# ---------------- New Starters (/candidateRegister) ----------------
+@app.route("/candidateRegister", methods=["GET", "POST"])
 def candidate_register():
+    if request.method == "POST":
+        first_name = request.form["first_name"]
+        last_name = request.form["last_name"]
+        email = request.form["email"]
+        phone = request.form["phone"]
+        town = request.form["town"]
+        primary_trade = request.form["primary_trade"]
+        primary_ticket = request.form["primary_ticket"]
 
-    if request.method=="POST":
+        utr = request.form.get("utr", "")
 
-        first_name=request.form["first_name"]
-        last_name=request.form["last_name"]
-        email=request.form["email"]
-        phone=request.form["phone"]
-        town=request.form["town"]
-        primary_trade=request.form["primary_trade"]
-        primary_ticket=request.form["primary_ticket"]
+        national_insurance = request.form["national_insurance"]
+        sort_code = request.form["sort_code"]
+        account_number = request.form["account_number"]
 
-        utr=request.form.get("utr","")
-
-        national_insurance=request.form["national_insurance"]
-        sort_code=request.form["sort_code"]
-        account_number=request.form["account_number"]
-
-        id_doc=request.files.get("id_document")
-
+        id_doc = request.files.get("id_document")
         if not id_doc or not id_doc.filename:
-            return render_template("candidate_register.html",error="Upload passport or birth certificate.")
+            return render_template("candidate_register.html", error="Upload passport or birth certificate.")
 
-        safe=secure_filename(id_doc.filename)
+        if not allowed_file(id_doc.filename):
+            return render_template("candidate_register.html", error="Invalid ID document file type.")
 
-        now_stamp=datetime.utcnow().strftime("%Y%m%d%H%M%S")
+        safe = secure_filename(id_doc.filename)
+        now_stamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+        id_document_filename = f"{first_name}_{last_name}_ID_{now_stamp}_{safe}"
+        id_doc.save(os.path.join(UPLOAD_FOLDER, id_document_filename))
 
-        id_document_filename=f"{first_name}_{last_name}_ID_{now_stamp}_{safe}"
+        ticket_files = request.files.getlist("tickets")
+        ticket_files = [f for f in ticket_files if f and f.filename]
 
-        id_doc.save(os.path.join(UPLOAD_FOLDER,id_document_filename))
+        if len(ticket_files) > MAX_TICKETS_FILES:
+            return render_template("candidate_register.html", error=f"You can upload up to {MAX_TICKETS_FILES} ticket files.")
 
-        ticket_files=request.files.getlist("tickets")
-        ticket_files=[f for f in ticket_files if f and f.filename]
-
-        saved=[]
-
-        for idx,f in enumerate(ticket_files,start=1):
-
+        saved = []
+        for idx, f in enumerate(ticket_files, start=1):
             if not allowed_file(f.filename):
-                return render_template("candidate_register.html",error="Invalid ticket file.")
-
-            safe_ticket=secure_filename(f.filename)
-            filename=f"{first_name}_{last_name}_STARTER_TICKET{idx}_{now_stamp}_{safe_ticket}"
-
-            f.save(os.path.join(UPLOAD_FOLDER,filename))
-
+                return render_template("candidate_register.html", error="Invalid ticket file.")
+            safe_ticket = secure_filename(f.filename)
+            filename = f"{first_name}_{last_name}_STARTER_TICKET{idx}_{now_stamp}_{safe_ticket}"
+            f.save(os.path.join(UPLOAD_FOLDER, filename))
             saved.append(filename)
 
-        tickets_filename="|".join(saved) if saved else None
+        tickets_filename = "|".join(saved) if saved else None
+        created_date = datetime.utcnow().date().isoformat()
 
-        created_date=datetime.utcnow().date().isoformat()
-
-        conn=sqlite3.connect(DB_NAME)
-        c=conn.cursor()
-
+        conn = sqlite3.connect(DB_NAME)
+        c = conn.cursor()
         c.execute("""
             INSERT INTO new_starters
             (first_name,last_name,email,phone,town,primary_trade,primary_ticket,
-            utr,national_insurance,sort_code,account_number,
-            id_document_filename,tickets_filename,created_date)
+             utr,national_insurance,sort_code,account_number,
+             id_document_filename,tickets_filename,created_date)
             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-        """,(first_name,last_name,email,phone,town,primary_trade,primary_ticket,
-            utr,national_insurance,sort_code,account_number,
-            id_document_filename,tickets_filename,created_date))
-
+        """, (first_name, last_name, email, phone, town, primary_trade, primary_ticket,
+              utr, national_insurance, sort_code, account_number,
+              id_document_filename, tickets_filename, created_date))
         conn.commit()
         conn.close()
 
@@ -362,70 +346,110 @@ def thanks():
     return render_template("thanks.html")
 
 
+# ---------------- Admin downloads ----------------
 @app.route("/admin/download/<path:filename>")
 @admin_required
 def admin_download(filename):
     return send_from_directory(UPLOAD_FOLDER, filename, as_attachment=True)
 
 
+# ---------------- Admin dashboard (two views) ----------------
 @app.route("/admin")
 @admin_required
 def admin_dashboard():
+    view = request.args.get("view", "candidates").strip().lower()
+    if view not in ("candidates", "starters"):
+        view = "candidates"
 
-    per_page=15
-    page=request.args.get("page",1,type=int)
+    per_page = 15
+    page = request.args.get("page", 1, type=int)
+    if page < 1:
+        page = 1
 
-    conn=db_connect()
-    c=conn.cursor()
+    conn = db_connect()
+    c = conn.cursor()
 
-    c.execute("SELECT COUNT(*) AS cnt FROM registrations")
-    total=c.fetchone()["cnt"]
+    if view == "candidates":
+        c.execute("SELECT COUNT(*) AS cnt FROM registrations")
+        total = c.fetchone()["cnt"]
+        total_pages = max(1, math.ceil(total / per_page))
+        if page > total_pages:
+            page = total_pages
 
-    total_pages=max(1,math.ceil(total/per_page))
+        offset = (page - 1) * per_page
+        c.execute("SELECT * FROM registrations ORDER BY id DESC LIMIT ? OFFSET ?", (per_page, offset))
+        rows = c.fetchall()
+        conn.close()
 
-    offset=(page-1)*per_page
+        candidates = []
+        for r in rows:
+            d = dict(r)
+            tf = (d.get("tickets_filename") or "").strip()
+            d["tickets_files"] = [x for x in tf.split("|") if x] if tf else []
+            candidates.append(d)
 
-    c.execute("SELECT * FROM registrations ORDER BY id DESC LIMIT ? OFFSET ?",(per_page,offset))
+        return render_template(
+            "admin.html",
+            view=view,
+            candidates=candidates,
+            starters=[],
+            page=page,
+            total_pages=total_pages
+        )
 
-    rows=c.fetchall()
+    # view == starters
+    c.execute("SELECT COUNT(*) AS cnt FROM new_starters")
+    total = c.fetchone()["cnt"]
+    total_pages = max(1, math.ceil(total / per_page))
+    if page > total_pages:
+        page = total_pages
+
+    offset = (page - 1) * per_page
+    c.execute("SELECT * FROM new_starters ORDER BY id DESC LIMIT ? OFFSET ?", (per_page, offset))
+    rows = c.fetchall()
     conn.close()
 
-    candidates=[dict(r) for r in rows]
+    starters = []
+    for r in rows:
+        d = dict(r)
+        tf = (d.get("tickets_filename") or "").strip()
+        d["tickets_files"] = [x for x in tf.split("|") if x] if tf else []
+        starters.append(d)
 
-    return render_template("admin.html",
-        candidates=candidates,
+    return render_template(
+        "admin.html",
+        view=view,
+        candidates=[],
+        starters=starters,
         page=page,
         total_pages=total_pages
     )
 
 
+# ---------------- Exports ----------------
 @app.route("/admin/export-candidates")
 @admin_required
 def export_candidates_csv():
-
-    conn=db_connect()
-    c=conn.cursor()
-
+    conn = db_connect()
+    c = conn.cursor()
     c.execute("SELECT * FROM registrations ORDER BY id DESC")
-
-    rows=c.fetchall()
-
+    rows = c.fetchall()
     conn.close()
 
-    si=StringIO()
-    writer=csv.writer(si)
+    si = StringIO()
+    writer = csv.writer(si)
 
     if rows:
-        keys=rows[0].keys()
+        keys = rows[0].keys()
         writer.writerow(keys)
-
         for row in rows:
             writer.writerow([row[k] for k in keys])
 
-    output=BytesIO(si.getvalue().encode("utf-8"))
+    output = BytesIO(si.getvalue().encode("utf-8"))
     output.seek(0)
 
-    return send_file(output,
+    return send_file(
+        output,
         mimetype="text/csv",
         as_attachment=True,
         download_name="candidates.csv"
@@ -435,35 +459,31 @@ def export_candidates_csv():
 @app.route("/admin/export-contacts")
 @admin_required
 def export_contacts_csv():
-
-    conn=db_connect()
-    c=conn.cursor()
-
+    conn = db_connect()
+    c = conn.cursor()
     c.execute("SELECT * FROM contact_requests ORDER BY id DESC")
-
-    rows=c.fetchall()
-
+    rows = c.fetchall()
     conn.close()
 
-    si=StringIO()
-    writer=csv.writer(si)
+    si = StringIO()
+    writer = csv.writer(si)
 
     if rows:
-        keys=rows[0].keys()
+        keys = rows[0].keys()
         writer.writerow(keys)
-
         for row in rows:
             writer.writerow([row[k] for k in keys])
 
-    output=BytesIO(si.getvalue().encode("utf-8"))
+    output = BytesIO(si.getvalue().encode("utf-8"))
     output.seek(0)
 
-    return send_file(output,
+    return send_file(
+        output,
         mimetype="text/csv",
         as_attachment=True,
         download_name="contacts.csv"
     )
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     app.run()
