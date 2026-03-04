@@ -5,17 +5,23 @@
 /* === Make page never overflow horizontally === */
 html, body { max-width: 100%; overflow-x: hidden; }
 
-/* Full width container but compact inside */
+/*
+  IMPORTANT:
+  This makes the admin area "full-bleed" across the whole screen,
+  even if base.html has a centered container/max-width.
+*/
 .admin-wrapper{
-  width: 100%;
-  margin: 0 auto;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
   padding: 18px 14px;
   box-sizing: border-box;
 }
 
+/* Remove inner max-width so we use the whole screen */
 .admin-inner{
-  max-width: 1400px;        /* compact overall width */
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;        /* left aligned */
 }
 
 /* Buttons */
@@ -105,13 +111,13 @@ html, body { max-width: 100%; overflow-x: hidden; }
   border-radius: 12px;
   border: 1px solid #e6e6e6;
   background: #fff;
-  overflow: hidden;          /* prevent horizontal page scrolling */
+  overflow: hidden;          /* prevent page horizontal scroll */
 }
 
 .admin-table{
   width: 100%;
   border-collapse: collapse;
-  table-layout: fixed;       /* key: keep inside viewport */
+  table-layout: fixed;       /* keep inside viewport */
   font-size: 13px;           /* compact */
 }
 
@@ -137,18 +143,18 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .admin-table tbody tr:nth-child(even){ background:#fafafa; }
 .admin-table tbody tr:hover{ background:#f2f6ff; }
 
-/* Column widths (compact) */
-.col-select{ width: 36px; }
-.col-date{ width: 92px; }
+/* Column widths tuned to show EVERYTHING on screen */
+.col-select{ width: 34px; }
+.col-date{ width: 90px; }
 .col-name{ width: 130px; }
 .col-email{ width: 200px; }
 .col-phone{ width: 120px; }
-.col-town{ width: 120px; }
-.col-trade{ width: 140px; }
+.col-town{ width: 115px; }
+.col-trade{ width: 130px; }
 .col-ticket{ width: 140px; }
-.col-additional{ width: 220px; }
-.col-cv{ width: 86px; }
-.col-tickets{ width: 86px; }
+.col-additional{ width: 260px; } /* make additional skills readable */
+.col-cv{ width: 90px; }
+.col-tickets{ width: 90px; }
 
 /* Links inside table */
 .table-link{
@@ -157,19 +163,19 @@ html, body { max-width: 100%; overflow-x: hidden; }
 }
 .table-link:hover{ opacity: .85; }
 
-/* Mobile: hide the widest columns first */
+/* On smaller screens, table still wraps and stays inside.
+   We DO NOT hide download buttons or additional skills here. */
 @media (max-width: 900px){
-  .hide-md{ display:none; }
-}
-@media (max-width: 700px){
-  .hide-sm{ display:none; }
+  .admin-table{ font-size: 12.5px; }
+  .admin-table th, .admin-table td{ padding: 6px 6px; }
+  .col-additional{ width: 220px; }
 }
 </style>
 
 <div class="admin-wrapper">
   <div class="admin-inner">
 
-    <h1 style="margin:0 0 8px;">Admin Dashboard test</h1>
+    <h1 style="margin:0 0 8px;">Admin Dashboard</h1>
 
     <div class="top-actions">
       <a class="btn" href="{{ url_for('export_candidates_csv') }}">Download Candidates CSV</a>
@@ -179,7 +185,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 
     <h2 style="margin: 14px 0 6px;">Registrations</h2>
 
-    <!-- Copy controls (always visible) -->
+    <!-- Copy controls -->
     <div class="copy-toolbar">
       <div class="row">
         <button class="btn secondary" id="selectAllBtn" type="button">Select all rows</button>
@@ -234,10 +240,10 @@ html, body { max-width: 100%; overflow-x: hidden; }
             <th class="col-name">Name</th>
             <th class="col-email">Email</th>
             <th class="col-phone">Phone</th>
-            <th class="col-town hide-sm">Town</th>
+            <th class="col-town">Town</th>
             <th class="col-trade">Primary trade</th>
-            <th class="col-ticket hide-md">Primary ticket</th>
-            <th class="col-additional hide-md">Additional skills</th>
+            <th class="col-ticket">Primary ticket</th>
+            <th class="col-additional">Additional skills</th>
             <th class="col-cv">CV</th>
             <th class="col-tickets">Tickets</th>
           </tr>
@@ -247,15 +253,14 @@ html, body { max-width: 100%; overflow-x: hidden; }
           <tr class="data-row">
             <td class="col-select"><input type="checkbox" class="row-check"></td>
 
-            <!-- data-col keys used by copy feature -->
             <td data-col="date">{{ c["created_date"] }}</td>
             <td data-col="name">{{ c["first_name"] }} {{ c["last_name"] }}</td>
             <td data-col="email">{{ c["email"] }}</td>
             <td data-col="phone">{{ c["phone"] }}</td>
-            <td data-col="town" class="hide-sm">{{ c["town"] }}</td>
+            <td data-col="town">{{ c["town"] }}</td>
             <td data-col="trade">{{ c["primary_trade"] }}</td>
-            <td data-col="ticket" class="hide-md">{{ c["primary_ticket"] }}</td>
-            <td data-col="additional" class="hide-md">{{ c["additional_info"] or "" }}</td>
+            <td data-col="ticket">{{ c["primary_ticket"] }}</td>
+            <td data-col="additional">{{ c["additional_info"] or "" }}</td>
 
             <td>
               {% if c["cv_filename"] %}
@@ -361,7 +366,6 @@ html, body { max-width: 100%; overflow-x: hidden; }
     const rows = Array.from(table.querySelectorAll('tbody tr.data-row'));
     const selectedRows = rows.filter(r => r.querySelector('.row-check')?.checked);
 
-    // IMPORTANT: only copy selected rows (no selection = do nothing)
     if (selectedRows.length === 0){
       setStatus('Select the rows you want first.');
       return;
@@ -379,10 +383,8 @@ html, body { max-width: 100%; overflow-x: hidden; }
     };
 
     const lines = [];
-    // header row
     lines.push(selectedCols.map(c => headerMap[c] || c).join('\t'));
 
-    // data rows
     for (const row of selectedRows){
       const cells = selectedCols.map(colKey => {
         const td = row.querySelector(`[data-col="${colKey}"]`);
@@ -404,4 +406,3 @@ html, body { max-width: 100%; overflow-x: hidden; }
 </script>
 
 {% endblock %}
-
