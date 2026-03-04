@@ -154,7 +154,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .col-ticket{ width: 140px; }
 .col-additional{ width: 260px; } /* make additional skills readable */
 .col-cv{ width: 90px; }
-.col-tickets{ width: 90px; }
+.col-tickets{ width: 140px; } /* slightly wider for multiple ticket links */
 
 /* Links inside table */
 .table-link{
@@ -162,6 +162,16 @@ html, body { max-width: 100%; overflow-x: hidden; }
   text-decoration: underline;
 }
 .table-link:hover{ opacity: .85; }
+
+/* NEW: ticket links layout */
+.ticket-links{
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ticket-links a{
+  white-space: nowrap;
+}
 
 /* On smaller screens, table still wraps and stays inside.
    We DO NOT hide download buttons or additional skills here. */
@@ -270,9 +280,21 @@ html, body { max-width: 100%; overflow-x: hidden; }
               {% endif %}
             </td>
 
+            <!-- UPDATED: Support single OR multiple ticket files -->
             <td>
               {% if c["tickets_filename"] %}
-                <a class="table-link" href="{{ url_for('admin_download', filename=c['tickets_filename']) }}">Download</a>
+                {% set raw = c["tickets_filename"] %}
+                {% if "|" in raw %}
+                  <div class="ticket-links">
+                    {% for f in raw.split("|") %}
+                      {% if f %}
+                        <a class="table-link" href="{{ url_for('admin_download', filename=f) }}">Ticket {{ loop.index }}</a>
+                      {% endif %}
+                    {% endfor %}
+                  </div>
+                {% else %}
+                  <a class="table-link" href="{{ url_for('admin_download', filename=raw) }}">Download</a>
+                {% endif %}
               {% else %}
                 —
               {% endif %}
@@ -406,5 +428,3 @@ html, body { max-width: 100%; overflow-x: hidden; }
 </script>
 
 {% endblock %}
-
-
