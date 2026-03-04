@@ -21,17 +21,13 @@ ALLOWED_EXTENSIONS = {"pdf", "doc", "docx", "jpg", "jpeg", "png"}
 MAX_UPLOAD_MB_EACH = 5
 MAX_TICKETS_FILES = 5
 
-# Allow enough total request size for CV + up to 5 tickets (each max 5MB)
-# (Flask checks request total, not per-file)
-app.config["MAX_CONTENT_LENGTH"] = (MAX_UPLOAD_MB_EACH * (MAX_TICKETS_FILES + 2)) * 1024 * 1024
+# Allow enough total request size for CV + up to 5 tickets + ID document
+app.config["MAX_CONTENT_LENGTH"] = (MAX_UPLOAD_MB_EACH * (MAX_TICKETS_FILES + 3)) * 1024 * 1024
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Admin password (you can move to .env later)
 ADMIN_PASSWORD = "Vale228"
-
-# Session secret
 app.secret_key = "CHANGE_THIS_SECRET_KEY_2026"
 
 
@@ -48,7 +44,7 @@ def db_connect():
 def ensure_column(conn, table: str, column: str, coltype: str):
     """
     Add column if missing. Safe to run on every start.
-    IMPORTANT: PRAGMA table_info returns tuples by default, so use row[1] for column name.
+    IMPORTANT: PRAGMA table_info returns tuples, so use row[1] for column name.
     """
     c = conn.cursor()
     c.execute(f"PRAGMA table_info({table})")
@@ -62,6 +58,7 @@ def init_db():
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
 
+    # Existing table
     c.execute("""
         CREATE TABLE IF NOT EXISTS registrations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -80,6 +77,7 @@ def init_db():
         )
     """)
 
+    # Existing table
     c.execute("""
         CREATE TABLE IF NOT EXISTS contact_requests (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -94,9 +92,29 @@ def init_db():
         )
     """)
 
+    # NEW TABLE: New Starters
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS new_starters (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            first_name TEXT NOT NULL,
+            last_name TEXT NOT NULL,
+            email TEXT NOT NULL,
+            phone TEXT NOT NULL,
+            town TEXT NOT NULL,
+            primary_trade TEXT NOT NULL,
+            primary_ticket TEXT NOT NULL,
+            utr TEXT,
+            national_insurance TEXT NOT NULL,
+            sort_code TEXT NOT NULL,
+            account_number TEXT NOT NULL,
+            id_document_filename TEXT NOT NULL,
+            created_date TEXT NOT NULL
+        )
+    """)
+
     conn.commit()
 
-    # Add columns your templates/admin expect
+    # Keep compatibility for templates/admin
     ensure_column(conn, "registrations", "created_date", "TEXT")
     ensure_column(conn, "contact_requests", "created_date", "TEXT")
 
@@ -206,7 +224,7 @@ def contact():
 
 
 # ----------------------------
-# Registration Form
+# Registration Form (New Candidates)
 # ----------------------------
 @app.route("/register", methods=["GET", "POST"])
 def register():
@@ -228,9 +246,8 @@ def register():
             return render_template("register.html", error=error)
 
         cv_filename = None
-        tickets_filename = None  # will store "file1|file2|file3"
+        tickets_filename = None  # "file1|file2|file3"
 
-        # CV (single optional)
         cv_file = request.files.get("cv")
         if cv_file and cv_file.filename:
             if not allowed_file(cv_file.filename):
@@ -239,7 +256,6 @@ def register():
             cv_filename = f"{first_name}_{last_name}_CV_{safe}"
             cv_file.save(os.path.join(UPLOAD_FOLDER, cv_filename))
 
-        # Tickets (up to 5 optional) — supports multiple inputs with same name="tickets"
         ticket_files = request.files.getlist("tickets")
         ticket_files = [f for f in ticket_files if f and f.filename]
 
@@ -282,13 +298,71 @@ def register():
     return render_template("register.html", error=error)
 
 
+# ----------------------------
+# NEW: Candidate Register (New Starters)
+# Hidden link: /candidateRegister
+# ----------------------------
+@app.route("/candidateRegister", methods=["GET", "POST"])
+def candidate_register():
+    error = None
+
+    if request.method == "POST":
+        first_name = request.form["first_name"].strip()
+        last_name = request.form["last_name"].strip()
+        email = request.form["email"].strip()
+        phone = request.form["phone"].strip()
+        town = request.form["town"].strip()
+        primary_trade = request.form["primary_trade"].strip()
+        primary_ticket = request.form["primary_ticket"].strip()
+
+        utr = request.form.get("utr", "").strip()  # optional
+        national_insurance = request.form["national_insurance"].strip()
+        sort_code = request.form["sort_code"].strip()
+        account_number = request.form["account_number"].strip()
+
+        # Required upload
+        id_doc = request.files.get("id_document")
+        if not id_doc or not id_doc.filename:
+            return render_template("candidate_register.html", error="Please upload your passport or birth certificate.")
+
+        if not allowed_file(id_doc.filename):
+            return render_template("candidate_register.html", error="Invalid file type. Use PDF, JPG or PNG.")
+
+        safe = secure_filename(id_doc.filename)
+        now_stamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+        id_document_filename = f"{first_name}_{last_name}_ID_{now_stamp}_{safe}"
+        id_doc.save(os.path.join(UPLOAD_FOLDER, id_document_filename))
+
+        created_date = datetime.utcnow().date().isoformat()
+
+        conn = sqlite3.connect(DB_NAME)
+        c = conn.cursor()
+        c.execute("""
+            INSERT INTO new_starters
+            (first_name, last_name, email, phone, town, primary_trade, primary_ticket,
+             utr, national_insurance, sort_code, account_number, id_document_filename, created_date)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            first_name, last_name, email, phone, town,
+            primary_trade, primary_ticket,
+            utr, national_insurance, sort_code, account_number,
+            id_document_filename, created_date
+        ))
+        conn.commit()
+        conn.close()
+
+        return redirect(url_for("thanks"))
+
+    return render_template("candidate_register.html", error=error)
+
+
 @app.route("/thanks")
 def thanks():
     return render_template("thanks.html")
 
 
 # ----------------------------
-# Admin download route used by admin.html
+# Admin download route
 # ----------------------------
 @app.route("/admin/download/<path:filename>")
 @admin_required
@@ -297,7 +371,7 @@ def admin_download(filename):
 
 
 # ----------------------------
-# Admin Dashboard (pagination) used by admin.html
+# Admin Dashboard (New Candidates)
 # ----------------------------
 @app.route("/admin")
 @admin_required
@@ -321,12 +395,10 @@ def admin_dashboard():
     rows = c.fetchall()
     conn.close()
 
-    # Your admin.html expects candidates list of dicts and created_date
     candidates = []
     for r in rows:
         d = dict(r)
         if not d.get("created_date"):
-            # fallback if older rows have no created_date
             d["created_date"] = (d.get("consent_at") or "")[:10]
         candidates.append(d)
 
@@ -334,7 +406,7 @@ def admin_dashboard():
 
 
 # ----------------------------
-# Admin CSV Exports used by admin.html
+# Admin CSV Exports
 # ----------------------------
 @app.route("/admin/export-candidates")
 @admin_required
