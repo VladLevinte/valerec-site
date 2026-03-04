@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, send_file, session
+from flask import Flask, render_template, request, redirect, url_for, send_from_directory, session, send_file
 import sqlite3
 import os
 import csv
@@ -6,6 +6,7 @@ from werkzeug.utils import secure_filename
 from io import StringIO, BytesIO
 from functools import wraps
 from datetime import datetime
+import math
 
 app = Flask(__name__)
 
@@ -13,31 +14,50 @@ DB_NAME = "database.db"
 UPLOAD_FOLDER = "uploads"
 
 ALLOWED_EXTENSIONS = {"pdf", "doc", "docx", "jpg", "jpeg", "png"}
-MAX_UPLOAD_MB = 5
 
-# NEW: max number of ticket files allowed
+MAX_UPLOAD_MB_EACH = 5
 MAX_TICKETS_FILES = 5
 
+# Allow up to: CV + 5 tickets (roughly). Add a little buffer.
+app.config["MAX_CONTENT_LENGTH"] = (MAX_UPLOAD_MB_EACH * (MAX_TICKETS_FILES + 2)) * 1024 * 1024
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
-app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# ✅ Admin password
+# ✅ Admin password (consider moving to env later)
 ADMIN_PASSWORD = "Vale228"
 
-# ✅ Session secret (change this to something random when going live)
+# ✅ Session secret
 app.secret_key = "CHANGE_THIS_SECRET_KEY_2026"
 
 
-def allowed_file(filename):
+def allowed_file(filename: str) -> bool:
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def db_connect():
+    conn = sqlite3.connect(DB_NAME)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def ensure_column(conn, table: str, column: str, coltype: str):
+    """
+    Add column if missing. Safe to run on every start.
+    """
+    c = conn.cursor()
+    c.execute(f"PRAGMA table_info({table})")
+    existing = {row["name"] for row in c.fetchall()}
+    if column not in existing:
+        c.execute(f"ALTER TABLE {table} ADD COLUMN {column} {coltype}")
+        conn.commit()
 
 
 def init_db():
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
 
+    # Create base tables if not exist
     c.execute("""
         CREATE TABLE IF NOT EXISTS registrations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -71,6 +91,11 @@ def init_db():
     """)
 
     conn.commit()
+
+    # Ensure columns your admin/template may expect
+    ensure_column(conn, "registrations", "created_date", "TEXT")
+    ensure_column(conn, "contact_requests", "created_date", "TEXT")
+
     conn.close()
 
 
@@ -96,7 +121,7 @@ def admin_login():
         pw = request.form.get("password", "")
         if pw == ADMIN_PASSWORD:
             session["is_admin"] = True
-            return redirect(url_for("admin"))
+            return redirect(url_for("admin_dashboard"))
         error = "Wrong password"
     return render_template("admin_login.html", error=error)
 
@@ -126,7 +151,7 @@ def services():
 
 
 @app.route("/candidates")
-def candidates():
+def candidates_page():
     return render_template("candidates.html")
 
 
@@ -159,14 +184,15 @@ def contact():
             error = "Please confirm you have read the Privacy Policy."
             return render_template("contact.html", error=error)
 
-        now = datetime.utcnow().isoformat()
+        now = datetime.utcnow().date().isoformat()
+        now_ts = datetime.utcnow().isoformat()
 
         conn = sqlite3.connect(DB_NAME)
         c = conn.cursor()
         c.execute("""
-            INSERT INTO contact_requests (name, email, phone, company, message, created_at, consent, consent_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (name, email, phone, company, message, now, consent, now))
+            INSERT INTO contact_requests (name, email, phone, company, message, created_at, created_date, consent, consent_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (name, email, phone, company, message, now_ts, now, consent, now_ts))
         conn.commit()
         conn.close()
 
@@ -198,9 +224,9 @@ def register():
             return render_template("register.html", error=error)
 
         cv_filename = None
-        tickets_filename = None  # will become "file1|file2|file3" if multiple
+        tickets_filename = None  # "file1|file2|..."
 
-        # ---- CV (single file, same as before) ----
+        # ---- CV (single) ----
         cv_file = request.files.get("cv")
         if cv_file and cv_file.filename:
             if allowed_file(cv_file.filename):
@@ -208,48 +234,42 @@ def register():
                 cv_filename = f"{first_name}_{last_name}_CV_{safe}"
                 cv_file.save(os.path.join(UPLOAD_FOLDER, cv_filename))
             else:
-                error = "Invalid CV file type. Use PDF, DOC, DOCX, JPG or PNG."
-                return render_template("register.html", error=error)
+                return render_template("register.html", error="Invalid CV file type. Use PDF, DOC, DOCX, JPG or PNG.")
 
-        # ---- Tickets (UP TO 5 files) ----
+        # ---- Tickets (up to 5) ----
         ticket_files = request.files.getlist("tickets")
-        # Remove empty items (browser can send an empty file input)
         ticket_files = [f for f in ticket_files if f and f.filename]
 
         if len(ticket_files) > MAX_TICKETS_FILES:
-            error = f"You can upload up to {MAX_TICKETS_FILES} ticket files."
-            return render_template("register.html", error=error)
+            return render_template("register.html", error=f"You can upload up to {MAX_TICKETS_FILES} ticket files.")
 
-        saved_ticket_names = []
+        saved = []
         for idx, f in enumerate(ticket_files, start=1):
             if not allowed_file(f.filename):
-                error = "Invalid tickets file type. Use PDF, DOC, DOCX, JPG or PNG."
-                return render_template("register.html", error=error)
-
+                return render_template("register.html", error="Invalid tickets file type. Use PDF, DOC, DOCX, JPG or PNG.")
             safe = secure_filename(f.filename)
-            # Add index so 5 uploads don't overwrite each other
             filename = f"{first_name}_{last_name}_TICKET{idx}_{safe}"
             f.save(os.path.join(UPLOAD_FOLDER, filename))
-            saved_ticket_names.append(filename)
+            saved.append(filename)
 
-        if saved_ticket_names:
-            # store as one string in DB
-            tickets_filename = "|".join(saved_ticket_names)
+        if saved:
+            tickets_filename = "|".join(saved)
 
-        now = datetime.utcnow().isoformat()
+        now_date = datetime.utcnow().date().isoformat()
+        now_ts = datetime.utcnow().isoformat()
 
         conn = sqlite3.connect(DB_NAME)
         c = conn.cursor()
         c.execute("""
             INSERT INTO registrations
             (first_name, last_name, email, phone, town, primary_trade, primary_ticket,
-             additional_info, cv_filename, tickets_filename, consent, consent_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             additional_info, cv_filename, tickets_filename, consent, consent_at, created_date)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             first_name, last_name, email, phone, town,
             primary_trade, primary_ticket,
             additional_info, cv_filename, tickets_filename,
-            consent, now
+            consent, now_ts, now_date
         ))
         conn.commit()
         conn.close()
@@ -265,33 +285,59 @@ def thanks():
 
 
 # ----------------------------
-# Admin Dashboard + Exports (session-based)
+# Admin: file download
+# ----------------------------
+@app.route("/admin/download/<path:filename>")
+@admin_required
+def admin_download(filename):
+    return send_from_directory(UPLOAD_FOLDER, filename, as_attachment=True)
+
+
+# ----------------------------
+# Admin Dashboard (pagination) - matches your admin.html
 # ----------------------------
 @app.route("/admin")
 @admin_required
-def admin():
-    conn = sqlite3.connect(DB_NAME)
-    conn.row_factory = sqlite3.Row
+def admin_dashboard():
+    per_page = 15
+    page = request.args.get("page", 1, type=int)
+    if page < 1:
+        page = 1
+
+    conn = db_connect()
     c = conn.cursor()
 
-    c.execute("SELECT * FROM registrations ORDER BY id DESC")
-    registrations = c.fetchall()
+    c.execute("SELECT COUNT(*) AS cnt FROM registrations")
+    total = c.fetchone()["cnt"]
+    total_pages = max(1, math.ceil(total / per_page))
+    if page > total_pages:
+        page = total_pages
 
-    c.execute("SELECT * FROM contact_requests ORDER BY id DESC")
-    contacts = c.fetchall()
-
+    offset = (page - 1) * per_page
+    c.execute("SELECT * FROM registrations ORDER BY id DESC LIMIT ? OFFSET ?", (per_page, offset))
+    rows = c.fetchall()
     conn.close()
 
-    return render_template("admin.html", registrations=registrations, contacts=contacts)
+    # Convert to dicts + guarantee created_date key exists for template
+    candidates = []
+    for r in rows:
+        d = dict(r)
+        if not d.get("created_date"):
+            d["created_date"] = d.get("consent_at") or ""
+        candidates.append(d)
+
+    return render_template("admin.html", candidates=candidates, page=page, total_pages=total_pages)
 
 
-@app.route("/admin/export")
+# ----------------------------
+# Admin CSV Exports (matches your admin.html)
+# ----------------------------
+@app.route("/admin/export-candidates")
 @admin_required
-def export_registrations_csv():
-    conn = sqlite3.connect(DB_NAME)
-    conn.row_factory = sqlite3.Row
+def export_candidates_csv():
+    conn = db_connect()
     c = conn.cursor()
-    c.execute("SELECT * FROM registrations")
+    c.execute("SELECT * FROM registrations ORDER BY id DESC")
     rows = c.fetchall()
     conn.close()
 
@@ -299,27 +345,22 @@ def export_registrations_csv():
     writer = csv.writer(si)
 
     if rows:
-        writer.writerow(rows[0].keys())
+        keys = rows[0].keys()
+        writer.writerow(keys)
         for row in rows:
-            writer.writerow([row[key] for key in row.keys()])
+            writer.writerow([row[k] for k in keys])
 
-    output = BytesIO()
-    output.write(si.getvalue().encode("utf-8"))
+    output = BytesIO(si.getvalue().encode("utf-8"))
     output.seek(0)
-
-    return send_file(output,
-                     mimetype="text/csv",
-                     as_attachment=True,
-                     download_name="registrations.csv")
+    return send_file(output, mimetype="text/csv", as_attachment=True, download_name="candidates.csv")
 
 
 @app.route("/admin/export-contacts")
 @admin_required
 def export_contacts_csv():
-    conn = sqlite3.connect(DB_NAME)
-    conn.row_factory = sqlite3.Row
+    conn = db_connect()
     c = conn.cursor()
-    c.execute("SELECT * FROM contact_requests")
+    c.execute("SELECT * FROM contact_requests ORDER BY id DESC")
     rows = c.fetchall()
     conn.close()
 
@@ -327,18 +368,14 @@ def export_contacts_csv():
     writer = csv.writer(si)
 
     if rows:
-        writer.writerow(rows[0].keys())
+        keys = rows[0].keys()
+        writer.writerow(keys)
         for row in rows:
-            writer.writerow([row[key] for key in row.keys()])
+            writer.writerow([row[k] for k in keys])
 
-    output = BytesIO()
-    output.write(si.getvalue().encode("utf-8"))
+    output = BytesIO(si.getvalue().encode("utf-8"))
     output.seek(0)
-
-    return send_file(output,
-                     mimetype="text/csv",
-                     as_attachment=True,
-                     download_name="contact_requests.csv")
+    return send_file(output, mimetype="text/csv", as_attachment=True, download_name="contacts.csv")
 
 
 if __name__ == "__main__":
