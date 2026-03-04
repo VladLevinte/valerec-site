@@ -1,12 +1,15 @@
-from flask import Flask, render_template, request, redirect, url_for, send_from_directory, session, send_file
+from flask import (
+    Flask, render_template, request, redirect, url_for,
+    send_from_directory, session, send_file
+)
 import sqlite3
 import os
 import csv
+import math
 from werkzeug.utils import secure_filename
 from io import StringIO, BytesIO
 from functools import wraps
 from datetime import datetime
-import math
 
 app = Flask(__name__)
 
@@ -18,16 +21,17 @@ ALLOWED_EXTENSIONS = {"pdf", "doc", "docx", "jpg", "jpeg", "png"}
 MAX_UPLOAD_MB_EACH = 5
 MAX_TICKETS_FILES = 5
 
-# Allow up to: CV + 5 tickets (roughly). Add a little buffer.
+# Allow enough total request size for CV + up to 5 tickets (each max 5MB)
+# (Flask checks request total, not per-file)
 app.config["MAX_CONTENT_LENGTH"] = (MAX_UPLOAD_MB_EACH * (MAX_TICKETS_FILES + 2)) * 1024 * 1024
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# ✅ Admin password (consider moving to env later)
+# Admin password (you can move to .env later)
 ADMIN_PASSWORD = "Vale228"
 
-# ✅ Session secret
+# Session secret
 app.secret_key = "CHANGE_THIS_SECRET_KEY_2026"
 
 
@@ -44,10 +48,11 @@ def db_connect():
 def ensure_column(conn, table: str, column: str, coltype: str):
     """
     Add column if missing. Safe to run on every start.
+    IMPORTANT: PRAGMA table_info returns tuples by default, so use row[1] for column name.
     """
     c = conn.cursor()
     c.execute(f"PRAGMA table_info({table})")
-   existing = {row[1] for row in c.fetchall()}  # row[1] = column name in PRAGMA table_info
+    existing = {row[1] for row in c.fetchall()}  # row[1] = column name
     if column not in existing:
         c.execute(f"ALTER TABLE {table} ADD COLUMN {column} {coltype}")
         conn.commit()
@@ -57,7 +62,6 @@ def init_db():
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
 
-    # Create base tables if not exist
     c.execute("""
         CREATE TABLE IF NOT EXISTS registrations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -92,7 +96,7 @@ def init_db():
 
     conn.commit()
 
-    # Ensure columns your admin/template may expect
+    # Add columns your templates/admin expect
     ensure_column(conn, "registrations", "created_date", "TEXT")
     ensure_column(conn, "contact_requests", "created_date", "TEXT")
 
@@ -103,7 +107,7 @@ init_db()
 
 
 # ----------------------------
-# ✅ Admin Session Protection
+# Admin Session Protection
 # ----------------------------
 def admin_required(f):
     @wraps(f)
@@ -166,7 +170,7 @@ def privacy():
 
 
 # ----------------------------
-# Contact Form (GDPR consent required)
+# Contact Form
 # ----------------------------
 @app.route("/contact", methods=["GET", "POST"])
 def contact():
@@ -184,15 +188,15 @@ def contact():
             error = "Please confirm you have read the Privacy Policy."
             return render_template("contact.html", error=error)
 
-        now = datetime.utcnow().date().isoformat()
         now_ts = datetime.utcnow().isoformat()
+        now_date = datetime.utcnow().date().isoformat()
 
         conn = sqlite3.connect(DB_NAME)
         c = conn.cursor()
         c.execute("""
             INSERT INTO contact_requests (name, email, phone, company, message, created_at, created_date, consent, consent_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (name, email, phone, company, message, now_ts, now, consent, now_ts))
+        """, (name, email, phone, company, message, now_ts, now_date, consent, now_ts))
         conn.commit()
         conn.close()
 
@@ -202,7 +206,7 @@ def contact():
 
 
 # ----------------------------
-# Registration Form (GDPR consent required)
+# Registration Form
 # ----------------------------
 @app.route("/register", methods=["GET", "POST"])
 def register():
@@ -224,19 +228,18 @@ def register():
             return render_template("register.html", error=error)
 
         cv_filename = None
-        tickets_filename = None  # "file1|file2|..."
+        tickets_filename = None  # will store "file1|file2|file3"
 
-        # ---- CV (single) ----
+        # CV (single optional)
         cv_file = request.files.get("cv")
         if cv_file and cv_file.filename:
-            if allowed_file(cv_file.filename):
-                safe = secure_filename(cv_file.filename)
-                cv_filename = f"{first_name}_{last_name}_CV_{safe}"
-                cv_file.save(os.path.join(UPLOAD_FOLDER, cv_filename))
-            else:
+            if not allowed_file(cv_file.filename):
                 return render_template("register.html", error="Invalid CV file type. Use PDF, DOC, DOCX, JPG or PNG.")
+            safe = secure_filename(cv_file.filename)
+            cv_filename = f"{first_name}_{last_name}_CV_{safe}"
+            cv_file.save(os.path.join(UPLOAD_FOLDER, cv_filename))
 
-        # ---- Tickets (up to 5) ----
+        # Tickets (up to 5 optional) — supports multiple inputs with same name="tickets"
         ticket_files = request.files.getlist("tickets")
         ticket_files = [f for f in ticket_files if f and f.filename]
 
@@ -255,8 +258,8 @@ def register():
         if saved:
             tickets_filename = "|".join(saved)
 
-        now_date = datetime.utcnow().date().isoformat()
         now_ts = datetime.utcnow().isoformat()
+        now_date = datetime.utcnow().date().isoformat()
 
         conn = sqlite3.connect(DB_NAME)
         c = conn.cursor()
@@ -285,7 +288,7 @@ def thanks():
 
 
 # ----------------------------
-# Admin: file download
+# Admin download route used by admin.html
 # ----------------------------
 @app.route("/admin/download/<path:filename>")
 @admin_required
@@ -294,7 +297,7 @@ def admin_download(filename):
 
 
 # ----------------------------
-# Admin Dashboard (pagination) - matches your admin.html
+# Admin Dashboard (pagination) used by admin.html
 # ----------------------------
 @app.route("/admin")
 @admin_required
@@ -318,19 +321,20 @@ def admin_dashboard():
     rows = c.fetchall()
     conn.close()
 
-    # Convert to dicts + guarantee created_date key exists for template
+    # Your admin.html expects candidates list of dicts and created_date
     candidates = []
     for r in rows:
         d = dict(r)
         if not d.get("created_date"):
-            d["created_date"] = d.get("consent_at") or ""
+            # fallback if older rows have no created_date
+            d["created_date"] = (d.get("consent_at") or "")[:10]
         candidates.append(d)
 
     return render_template("admin.html", candidates=candidates, page=page, total_pages=total_pages)
 
 
 # ----------------------------
-# Admin CSV Exports (matches your admin.html)
+# Admin CSV Exports used by admin.html
 # ----------------------------
 @app.route("/admin/export-candidates")
 @admin_required
@@ -380,4 +384,3 @@ def export_contacts_csv():
 
 if __name__ == "__main__":
     app.run()
-
