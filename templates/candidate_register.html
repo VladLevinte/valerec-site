@@ -5,6 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>New Starter Registration - Vale Recruitment</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+  <style>
+    /* Fix: make tel/email inputs same width as others even if CSS targets only text */
+    .form-card input[type="tel"],
+    .form-card input[type="email"],
+    .form-card input[type="text"],
+    .form-card input[type="number"],
+    .form-card select,
+    .form-card textarea {
+      width: 100%;
+      box-sizing: border-box;
+    }
+  </style>
 </head>
 <body>
 
@@ -16,8 +29,6 @@
       <div class="tag">Nationwide Construction Recruitment</div>
     </div>
   </a>
-
-  <!-- IMPORTANT: no menu links here (hidden link page) -->
 </header>
 
 <main class="container">
@@ -28,7 +39,7 @@
     <div class="alert">{{ error }}</div>
   {% endif %}
 
-  <form method="POST" enctype="multipart/form-data" class="form-card">
+  <form method="POST" enctype="multipart/form-data" class="form-card" id="starterForm">
 
     <div class="form-grid">
       <div class="field">
@@ -48,6 +59,7 @@
 
       <div class="field">
         <label>Phone *</label>
+        <!-- Keep tel for mobile keyboard, but fixed width via CSS above -->
         <input type="tel" name="phone" required autocomplete="tel" inputmode="tel">
       </div>
 
@@ -91,11 +103,183 @@
         <input type="file" name="id_document" required accept=".jpg,.jpeg,.png,.pdf">
         <div class="hint">Allowed: JPG, PNG, PDF • Max 5MB</div>
       </div>
+
+      <!-- ✅ OPTIONAL: Additional tickets upload (up to 5) -->
+      <div class="field full">
+        <label>Upload Tickets (optional — up to 5 files)</label>
+
+        <input
+          type="file"
+          id="ticketsPicker"
+          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+          multiple
+        >
+        <div class="hint">Optional • Select up to 5 files total • Allowed: PDF, DOC, DOCX, JPG, PNG • Max 5MB each</div>
+
+        <div id="ticketsList" style="
+          margin-top:10px;
+          border:1px solid #e6e6e6;
+          border-radius:12px;
+          padding:10px;
+          background:#fff;
+          display:none;
+        ">
+          <div style="font-weight:700; margin-bottom:8px;">Selected tickets:</div>
+          <div id="ticketsItems" style="display:flex; flex-direction:column; gap:8px;"></div>
+        </div>
+
+        <div id="ticketsHiddenInputs" style="display:none;"></div>
+
+        <div id="ticketsError" style="margin-top:8px; color:#b00020; font-size:13px; display:none;"></div>
+      </div>
+
     </div>
 
     <button class="btn btn-wide" type="submit">Submit</button>
   </form>
 </main>
+
+<script>
+(function(){
+  const MAX_FILES = 5;
+
+  const picker = document.getElementById('ticketsPicker');
+  const listBox = document.getElementById('ticketsList');
+  const itemsWrap = document.getElementById('ticketsItems');
+  const hiddenWrap = document.getElementById('ticketsHiddenInputs');
+  const err = document.getElementById('ticketsError');
+
+  let files = [];
+
+  function showError(msg){
+    if(!msg){
+      err.style.display = 'none';
+      err.textContent = '';
+      return;
+    }
+    err.style.display = 'block';
+    err.textContent = msg;
+  }
+
+  function formatBytes(bytes){
+    const units = ['B','KB','MB','GB'];
+    let i = 0;
+    let n = bytes || 0;
+    while(n >= 1024 && i < units.length-1){ n /= 1024; i++; }
+    return `${n.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+  }
+
+  function isAllowedFile(name){
+    const ext = (name.split('.').pop() || '').toLowerCase();
+    return ['pdf','doc','docx','jpg','jpeg','png'].includes(ext);
+  }
+
+  function rebuildHiddenInputs(){
+    hiddenWrap.innerHTML = '';
+    files.forEach((file) => {
+      const dt = new DataTransfer();
+      dt.items.add(file);
+
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.name = 'tickets';   // backend uses getlist("tickets")
+      input.files = dt.files;
+
+      hiddenWrap.appendChild(input);
+    });
+  }
+
+  function render(){
+    if(files.length === 0){
+      listBox.style.display = 'none';
+      itemsWrap.innerHTML = '';
+      rebuildHiddenInputs();
+      return;
+    }
+    listBox.style.display = 'block';
+    itemsWrap.innerHTML = '';
+
+    files.forEach((file, idx) => {
+      const row = document.createElement('div');
+      row.style.display = 'flex';
+      row.style.alignItems = 'center';
+      row.style.justifyContent = 'space-between';
+      row.style.gap = '10px';
+      row.style.padding = '10px';
+      row.style.border = '1px solid #eef0f4';
+      row.style.borderRadius = '10px';
+      row.style.background = '#fafafa';
+
+      const left = document.createElement('div');
+      left.style.display = 'flex';
+      left.style.flexDirection = 'column';
+      left.style.gap = '2px';
+
+      const name = document.createElement('div');
+      name.style.fontWeight = '700';
+      name.textContent = file.name;
+
+      const meta = document.createElement('div');
+      meta.style.fontSize = '12px';
+      meta.style.color = '#56627a';
+      meta.textContent = `${formatBytes(file.size)}`;
+
+      left.appendChild(name);
+      left.appendChild(meta);
+
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.textContent = '✕';
+      removeBtn.style.border = 'none';
+      removeBtn.style.background = '#0b1b34';
+      removeBtn.style.color = '#fff';
+      removeBtn.style.borderRadius = '8px';
+      removeBtn.style.padding = '8px 10px';
+      removeBtn.style.cursor = 'pointer';
+
+      removeBtn.addEventListener('click', () => {
+        files.splice(idx, 1);
+        showError('');
+        render();
+      });
+
+      row.appendChild(left);
+      row.appendChild(removeBtn);
+      itemsWrap.appendChild(row);
+    });
+
+    rebuildHiddenInputs();
+  }
+
+  if(picker){
+    picker.addEventListener('change', () => {
+      const picked = Array.from(picker.files || []);
+      if(picked.length === 0) return;
+
+      for(const f of picked){
+        if(files.length >= MAX_FILES){
+          showError(`You can upload up to ${MAX_FILES} ticket files.`);
+          break;
+        }
+        if(!isAllowedFile(f.name)){
+          showError('Invalid file type. Use PDF, DOC, DOCX, JPG or PNG.');
+          continue;
+        }
+
+        const dup = files.some(x => x.name === f.name && x.size === f.size);
+        if(!dup){
+          files.push(f);
+        }
+      }
+
+      picker.value = '';
+      render();
+    });
+  }
+
+  render();
+})();
+</script>
 
 </body>
 </html>
