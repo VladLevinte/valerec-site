@@ -2,14 +2,8 @@
 {% block content %}
 
 <style>
-/* === Make page never overflow horizontally === */
 html, body { max-width: 100%; overflow-x: hidden; }
 
-/*
-  IMPORTANT:
-  This makes the admin area "full-bleed" across the whole screen,
-  even if base.html has a centered container/max-width.
-*/
 .admin-wrapper{
   width: 100vw;
   margin-left: calc(50% - 50vw);
@@ -18,13 +12,8 @@ html, body { max-width: 100%; overflow-x: hidden; }
   box-sizing: border-box;
 }
 
-/* Remove inner max-width so we use the whole screen */
-.admin-inner{
-  max-width: none;
-  margin: 0;        /* left aligned */
-}
+.admin-inner{ max-width:none; margin:0; }
 
-/* Buttons */
 .btn{
   padding: 7px 12px;
   background: #0b1b34;
@@ -39,14 +28,30 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .btn:hover{ opacity: .88; }
 .btn.secondary{ background: #1f2f4d; }
 .btn.light{ background: #e9eef7; color:#0b1b34; }
-.btn.light:hover{ opacity: .95; }
 
-/* Header and toolbars */
-.top-actions{
+.top-actions{ display:flex; flex-wrap:wrap; gap:10px; margin: 14px 0 10px; }
+
+.tabs{
   display:flex;
-  flex-wrap:wrap;
   gap:10px;
-  margin: 14px 0 10px;
+  flex-wrap:wrap;
+  margin: 10px 0 14px;
+}
+.tab{
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid #d8deea;
+  background: #fff;
+  text-decoration:none;
+  font-weight:800;
+  font-size:13px;
+  color:#0b1b34;
+}
+.tab:hover{ background:#f2f6ff; }
+.tab.active{
+  background:#0b1b34;
+  color:#fff;
+  border-color:#0b1b34;
 }
 
 .copy-toolbar{
@@ -56,14 +61,8 @@ html, body { max-width: 100%; overflow-x: hidden; }
   border-radius: 12px;
   background: #fff;
 }
-.copy-toolbar .row{
-  display:flex;
-  flex-wrap:wrap;
-  gap:10px;
-  align-items:center;
-}
+.copy-toolbar .row{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
 .copy-toolbar .row + .row{ margin-top: 10px; }
-
 .copy-toolbar label{
   display:inline-flex;
   align-items:center;
@@ -74,13 +73,8 @@ html, body { max-width: 100%; overflow-x: hidden; }
   background: #f6f8fc;
   border: 1px solid #e8eef8;
 }
+.small-note{ font-size: 12px; color: #56627a; }
 
-.small-note{
-  font-size: 12px;
-  color: #56627a;
-}
-
-/* Pagination */
 .pagination{
   display:flex;
   flex-wrap:wrap;
@@ -105,45 +99,32 @@ html, body { max-width: 100%; overflow-x: hidden; }
   font-weight:700;
 }
 
-/* === Compact table that fits screen === */
 .table-wrap{
   width: 100%;
   border-radius: 12px;
   border: 1px solid #e6e6e6;
   background: #fff;
-  overflow: hidden;          /* prevent page horizontal scroll */
+  overflow: hidden;
 }
-
 .admin-table{
   width: 100%;
   border-collapse: collapse;
-  table-layout: fixed;       /* keep inside viewport */
-  font-size: 13px;           /* compact */
+  table-layout: fixed;
+  font-size: 13px;
 }
-
-.admin-table th,
-.admin-table td{
+.admin-table th, .admin-table td{
   border-bottom: 1px solid #eeeeee;
-  padding: 6px 8px;          /* compact */
+  padding: 6px 8px;
   text-align: left;
   vertical-align: top;
-
-  /* Allow wrapping so columns can be narrow */
   white-space: normal;
   overflow-wrap: anywhere;
   word-break: break-word;
 }
-
-.admin-table thead th{
-  background: #f7f9fc;
-  font-weight: 700;
-}
-
-/* Zebra + hover */
+.admin-table thead th{ background: #f7f9fc; font-weight: 700; }
 .admin-table tbody tr:nth-child(even){ background:#fafafa; }
 .admin-table tbody tr:hover{ background:#f2f6ff; }
 
-/* Column widths tuned to show EVERYTHING on screen */
 .col-select{ width: 34px; }
 .col-date{ width: 90px; }
 .col-name{ width: 130px; }
@@ -152,279 +133,337 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .col-town{ width: 115px; }
 .col-trade{ width: 130px; }
 .col-ticket{ width: 140px; }
-.col-additional{ width: 260px; } /* make additional skills readable */
-.col-cv{ width: 90px; }
-.col-tickets{ width: 140px; } /* slightly wider for multiple ticket links */
+.col-additional{ width: 260px; }
+.col-cv{ width: 100px; }
+.col-tickets{ width: 170px; }
 
-/* Links inside table */
-.table-link{
-  color: #0b1b34;
-  text-decoration: underline;
-}
+.table-link{ color:#0b1b34; text-decoration: underline; }
 .table-link:hover{ opacity: .85; }
 
-/* NEW: ticket links layout */
-.ticket-links{
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.ticket-links a{
-  white-space: nowrap;
-}
-
-/* On smaller screens, table still wraps and stays inside.
-   We DO NOT hide download buttons or additional skills here. */
-@media (max-width: 900px){
-  .admin-table{ font-size: 12.5px; }
-  .admin-table th, .admin-table td{ padding: 6px 6px; }
-  .col-additional{ width: 220px; }
+.badge{
+  display:inline-block;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background:#eef3ff;
+  border:1px solid #d8e4ff;
+  font-size:12px;
+  font-weight:800;
+  color:#0b1b34;
+  margin-right:6px;
+  margin-bottom:6px;
 }
 </style>
 
 <div class="admin-wrapper">
   <div class="admin-inner">
 
-    <h1 style="margin:0 0 8px;">Admin Dashboard</h1>
-
-    <div class="top-actions">
-      <a class="btn" href="{{ url_for('export_candidates_csv') }}">Download Candidates CSV</a>
-      <a class="btn" href="{{ url_for('export_contacts_csv') }}">Download Contacts CSV</a>
-      <a class="btn" href="{{ url_for('admin_logout') }}">Logout</a>
-    </div>
-
-    <h2 style="margin: 14px 0 6px;">Registrations</h2>
-
-    <!-- Copy controls -->
-    <div class="copy-toolbar">
-      <div class="row">
-        <button class="btn secondary" id="selectAllBtn" type="button">Select all rows</button>
-        <button class="btn secondary" id="clearSelectionBtn" type="button">Clear selection</button>
-        <button class="btn" id="copyBtn" type="button">Copy selected rows</button>
-        <span class="small-note" id="copyStatus"></span>
-      </div>
-
-      <div class="row">
-        <span class="small-note" style="margin-right:4px;">Columns to copy:</span>
-
-        <!-- Date is UNCHECKED by default -->
-        <label><input type="checkbox" class="col-check" data-col="name" checked> Name</label>
-        <label><input type="checkbox" class="col-check" data-col="email" checked> Email</label>
-        <label><input type="checkbox" class="col-check" data-col="phone" checked> Phone</label>
-        <label><input type="checkbox" class="col-check" data-col="trade" checked> Trade</label>
-
-        <label><input type="checkbox" class="col-check" data-col="date"> Date</label>
-        <label><input type="checkbox" class="col-check" data-col="town"> Town</label>
-        <label><input type="checkbox" class="col-check" data-col="ticket"> Ticket</label>
-        <label><input type="checkbox" class="col-check" data-col="additional"> Additional skills</label>
-
-        <button class="btn light" id="colsAllBtn" type="button">All</button>
-        <button class="btn light" id="colsNoneBtn" type="button">None</button>
-      </div>
-
-      <div class="row">
-        <span class="small-note">
-          Tip: Tick the rows you want → click “Copy selected rows” → paste into Google Sheets/Excel.
-        </span>
+    <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+      <h1 style="margin:0;">Admin</h1>
+      <div class="top-actions" style="margin:0;">
+        <a class="btn" href="{{ url_for('export_candidates_csv') }}">Download Candidates CSV</a>
+        <a class="btn" href="{{ url_for('export_contacts_csv') }}">Download Contacts CSV</a>
+        <a class="btn" href="{{ url_for('admin_logout') }}">Logout</a>
       </div>
     </div>
 
-    <!-- Pagination Top -->
-    <div class="pagination">
-      {% for p in range(1, total_pages + 1) %}
-        {% if p == page %}
-          <span class="page-pill active">{{ p }}</span>
-        {% else %}
-          <a class="page-pill" href="{{ url_for('admin_dashboard', page=p) }}">{{ p }}</a>
-        {% endif %}
-      {% endfor %}
-      <span class="small-note">Page {{ page }} of {{ total_pages }}</span>
+    <!-- Tabs -->
+    <div class="tabs">
+      <a class="tab {% if view == 'candidates' %}active{% endif %}" href="{{ url_for('admin_dashboard', view='candidates', page=1) }}">New Candidates</a>
+      <a class="tab {% if view == 'starters' %}active{% endif %}" href="{{ url_for('admin_dashboard', view='starters', page=1) }}">New Starters</a>
     </div>
 
-    <div class="table-wrap">
-      <table class="admin-table" id="adminTable">
-        <thead>
-          <tr>
-            <th class="col-select"><input type="checkbox" id="masterRowCheck" title="Select all rows on this page"></th>
-            <th class="col-date">Date</th>
-            <th class="col-name">Name</th>
-            <th class="col-email">Email</th>
-            <th class="col-phone">Phone</th>
-            <th class="col-town">Town</th>
-            <th class="col-trade">Primary trade</th>
-            <th class="col-ticket">Primary ticket</th>
-            <th class="col-additional">Additional skills</th>
-            <th class="col-cv">CV</th>
-            <th class="col-tickets">Tickets</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for c in candidates %}
-          <tr class="data-row">
-            <td class="col-select"><input type="checkbox" class="row-check"></td>
+    <!-- ===================== NEW CANDIDATES ===================== -->
+    {% if view == 'candidates' %}
+      <h2 style="margin: 0 0 6px;">New Candidates</h2>
 
-            <td data-col="date">{{ c["created_date"] }}</td>
-            <td data-col="name">{{ c["first_name"] }} {{ c["last_name"] }}</td>
-            <td data-col="email">{{ c["email"] }}</td>
-            <td data-col="phone">{{ c["phone"] }}</td>
-            <td data-col="town">{{ c["town"] }}</td>
-            <td data-col="trade">{{ c["primary_trade"] }}</td>
-            <td data-col="ticket">{{ c["primary_ticket"] }}</td>
-            <td data-col="additional">{{ c["additional_info"] or "" }}</td>
+      <!-- Copy controls (unchanged behaviour) -->
+      <div class="copy-toolbar">
+        <div class="row">
+          <button class="btn secondary" id="selectAllBtn" type="button">Select all rows</button>
+          <button class="btn secondary" id="clearSelectionBtn" type="button">Clear selection</button>
+          <button class="btn" id="copyBtn" type="button">Copy selected rows</button>
+          <span class="small-note" id="copyStatus"></span>
+        </div>
 
-            <td>
-              {% if c["cv_filename"] %}
-                <a class="table-link" href="{{ url_for('admin_download', filename=c['cv_filename']) }}">Download</a>
-              {% else %}
-                —
-              {% endif %}
-            </td>
+        <div class="row">
+          <span class="small-note" style="margin-right:4px;">Columns to copy:</span>
 
-            <!-- UPDATED: Support single OR multiple ticket files -->
-            <td>
-              {% if c["tickets_filename"] %}
-                {% set raw = c["tickets_filename"] %}
-                {% if "|" in raw %}
-                  <div class="ticket-links">
-                    {% for f in raw.split("|") %}
-                      {% if f %}
-                        <a class="table-link" href="{{ url_for('admin_download', filename=f) }}">Ticket {{ loop.index }}</a>
-                      {% endif %}
-                    {% endfor %}
-                  </div>
+          <label><input type="checkbox" class="col-check" data-col="name" checked> Name</label>
+          <label><input type="checkbox" class="col-check" data-col="email" checked> Email</label>
+          <label><input type="checkbox" class="col-check" data-col="phone" checked> Phone</label>
+          <label><input type="checkbox" class="col-check" data-col="trade" checked> Trade</label>
+
+          <label><input type="checkbox" class="col-check" data-col="date"> Date</label>
+          <label><input type="checkbox" class="col-check" data-col="town"> Town</label>
+          <label><input type="checkbox" class="col-check" data-col="ticket"> Ticket</label>
+          <label><input type="checkbox" class="col-check" data-col="additional"> Additional skills</label>
+
+          <button class="btn light" id="colsAllBtn" type="button">All</button>
+          <button class="btn light" id="colsNoneBtn" type="button">None</button>
+        </div>
+
+        <div class="row">
+          <span class="small-note">Tip: Tick the rows you want → click “Copy selected rows” → paste into Google Sheets/Excel.</span>
+        </div>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination">
+        {% for p in range(1, total_pages + 1) %}
+          {% if p == page %}
+            <span class="page-pill active">{{ p }}</span>
+          {% else %}
+            <a class="page-pill" href="{{ url_for('admin_dashboard', view='candidates', page=p) }}">{{ p }}</a>
+          {% endif %}
+        {% endfor %}
+        <span class="small-note">Page {{ page }} of {{ total_pages }}</span>
+      </div>
+
+      <div class="table-wrap">
+        <table class="admin-table" id="adminTable">
+          <thead>
+            <tr>
+              <th class="col-select"><input type="checkbox" id="masterRowCheck" title="Select all rows on this page"></th>
+              <th class="col-date">Date</th>
+              <th class="col-name">Name</th>
+              <th class="col-email">Email</th>
+              <th class="col-phone">Phone</th>
+              <th class="col-town">Town</th>
+              <th class="col-trade">Primary trade</th>
+              <th class="col-ticket">Primary ticket</th>
+              <th class="col-additional">Additional skills</th>
+              <th class="col-cv">CV</th>
+              <th class="col-tickets">Tickets</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in candidates %}
+            <tr class="data-row">
+              <td class="col-select"><input type="checkbox" class="row-check"></td>
+
+              <td data-col="date">{{ c["created_date"] }}</td>
+              <td data-col="name">{{ c["first_name"] }} {{ c["last_name"] }}</td>
+              <td data-col="email">{{ c["email"] }}</td>
+              <td data-col="phone">{{ c["phone"] }}</td>
+              <td data-col="town">{{ c["town"] }}</td>
+              <td data-col="trade">{{ c["primary_trade"] }}</td>
+              <td data-col="ticket">{{ c["primary_ticket"] }}</td>
+              <td data-col="additional">{{ c["additional_info"] or "" }}</td>
+
+              <td>
+                {% if c["cv_filename"] %}
+                  <a class="table-link" href="{{ url_for('admin_download', filename=c['cv_filename']) }}">Download</a>
                 {% else %}
-                  <a class="table-link" href="{{ url_for('admin_download', filename=raw) }}">Download</a>
+                  —
                 {% endif %}
-              {% else %}
-                —
-              {% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+              </td>
 
-    <!-- Pagination Bottom -->
-    <div class="pagination" style="margin-top: 14px;">
-      {% for p in range(1, total_pages + 1) %}
-        {% if p == page %}
-          <span class="page-pill active">{{ p }}</span>
-        {% else %}
-          <a class="page-pill" href="{{ url_for('admin_dashboard', page=p) }}">{{ p }}</a>
-        {% endif %}
-      {% endfor %}
-    </div>
+              <td>
+                {% if c["tickets_files"] and c["tickets_files"]|length > 0 %}
+                  {% for f in c["tickets_files"] %}
+                    <a class="table-link" href="{{ url_for('admin_download', filename=f) }}">Ticket {{ loop.index }}</a>{% if not loop.last %}<br>{% endif %}
+                  {% endfor %}
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pagination" style="margin-top: 14px;">
+        {% for p in range(1, total_pages + 1) %}
+          {% if p == page %}
+            <span class="page-pill active">{{ p }}</span>
+          {% else %}
+            <a class="page-pill" href="{{ url_for('admin_dashboard', view='candidates', page=p) }}">{{ p }}</a>
+          {% endif %}
+        {% endfor %}
+      </div>
+
+      <script>
+      (function(){
+        const table = document.getElementById('adminTable');
+        const copyBtn = document.getElementById('copyBtn');
+        const statusEl = document.getElementById('copyStatus');
+
+        const masterRowCheck = document.getElementById('masterRowCheck');
+        const selectAllBtn = document.getElementById('selectAllBtn');
+        const clearSelectionBtn = document.getElementById('clearSelectionBtn');
+
+        const colsAllBtn = document.getElementById('colsAllBtn');
+        const colsNoneBtn = document.getElementById('colsNoneBtn');
+        const colChecks = Array.from(document.querySelectorAll('.col-check'));
+
+        function setStatus(msg){
+          statusEl.textContent = msg || '';
+          if(msg){ setTimeout(()=>{ statusEl.textContent=''; }, 2800); }
+        }
+
+        function setAllRowChecks(value){
+          table.querySelectorAll('tbody .row-check').forEach(cb => cb.checked = value);
+          masterRowCheck.checked = value;
+        }
+
+        masterRowCheck.addEventListener('change', () => setAllRowChecks(masterRowCheck.checked));
+        selectAllBtn.addEventListener('click', () => setAllRowChecks(true));
+        clearSelectionBtn.addEventListener('click', () => setAllRowChecks(false));
+
+        colsAllBtn.addEventListener('click', () => colChecks.forEach(ch => ch.checked = true));
+        colsNoneBtn.addEventListener('click', () => colChecks.forEach(ch => ch.checked = false));
+
+        function getSelectedColumns(){
+          return colChecks.filter(ch => ch.checked).map(ch => ch.dataset.col);
+        }
+
+        function escapeCell(text){
+          return String(text ?? '').replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim();
+        }
+
+        async function copyToClipboard(text){
+          if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(text);
+            return true;
+          }
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          ta.style.position = 'fixed';
+          ta.style.left = '-9999px';
+          ta.style.top = '-9999px';
+          document.body.appendChild(ta);
+          ta.focus();
+          ta.select();
+          const ok = document.execCommand('copy');
+          document.body.removeChild(ta);
+          return ok;
+        }
+
+        copyBtn.addEventListener('click', async () => {
+          const selectedCols = getSelectedColumns();
+          if (selectedCols.length === 0){ setStatus('Choose at least one column.'); return; }
+
+          const rows = Array.from(table.querySelectorAll('tbody tr.data-row'));
+          const selectedRows = rows.filter(r => r.querySelector('.row-check')?.checked);
+          if (selectedRows.length === 0){ setStatus('Select the rows you want first.'); return; }
+
+          const headerMap = {
+            date: 'Date',
+            name: 'Name',
+            email: 'Email',
+            phone: 'Phone',
+            town: 'Town',
+            trade: 'Primary trade',
+            ticket: 'Primary ticket',
+            additional: 'Additional skills'
+          };
+
+          const lines = [];
+          lines.push(selectedCols.map(c => headerMap[c] || c).join('\t'));
+
+          for (const row of selectedRows){
+            const cells = selectedCols.map(colKey => {
+              const td = row.querySelector(`[data-col="${colKey}"]`);
+              return escapeCell(td ? td.textContent : '');
+            });
+            lines.push(cells.join('\t'));
+          }
+
+          try{
+            const ok = await copyToClipboard(lines.join('\n'));
+            setStatus(ok ? `Copied ${selectedRows.length} row(s) ✓` : 'Copy failed.');
+          } catch(e){
+            setStatus('Copy failed.');
+          }
+        });
+      })();
+      </script>
+
+    {% endif %}
+
+    <!-- ===================== NEW STARTERS ===================== -->
+    {% if view == 'starters' %}
+      <h2 style="margin: 0 0 6px;">New Starters</h2>
+
+      <div class="pagination">
+        {% for p in range(1, total_pages + 1) %}
+          {% if p == page %}
+            <span class="page-pill active">{{ p }}</span>
+          {% else %}
+            <a class="page-pill" href="{{ url_for('admin_dashboard', view='starters', page=p) }}">{{ p }}</a>
+          {% endif %}
+        {% endfor %}
+        <span class="small-note">Page {{ page }} of {{ total_pages }}</span>
+      </div>
+
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th class="col-date">Date</th>
+              <th class="col-name">Name</th>
+              <th class="col-email">Email</th>
+              <th class="col-phone">Phone</th>
+              <th class="col-town">Town</th>
+              <th class="col-trade">Trade</th>
+              <th class="col-ticket">Tickets</th>
+              <th style="width:120px;">UTR</th>
+              <th style="width:160px;">NI Number</th>
+              <th style="width:120px;">Sort Code</th>
+              <th style="width:140px;">Account No.</th>
+              <th style="width:120px;">ID Doc</th>
+              <th style="width:170px;">Files</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in starters %}
+            <tr>
+              <td>{{ s["created_date"] }}</td>
+              <td>{{ s["first_name"] }} {{ s["last_name"] }}</td>
+              <td>{{ s["email"] }}</td>
+              <td>{{ s["phone"] }}</td>
+              <td>{{ s["town"] }}</td>
+              <td>{{ s["primary_trade"] }}</td>
+              <td>{{ s["primary_ticket"] }}</td>
+              <td>{{ s["utr"] or "—" }}</td>
+              <td>{{ s["national_insurance"] }}</td>
+              <td>{{ s["sort_code"] }}</td>
+              <td>{{ s["account_number"] }}</td>
+              <td>
+                {% if s["id_document_filename"] %}
+                  <a class="table-link" href="{{ url_for('admin_download', filename=s['id_document_filename']) }}">Download</a>
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+              <td>
+                {% if s["tickets_files"] and s["tickets_files"]|length > 0 %}
+                  {% for f in s["tickets_files"] %}
+                    <a class="table-link" href="{{ url_for('admin_download', filename=f) }}">Ticket {{ loop.index }}</a>{% if not loop.last %}<br>{% endif %}
+                  {% endfor %}
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pagination" style="margin-top: 14px;">
+        {% for p in range(1, total_pages + 1) %}
+          {% if p == page %}
+            <span class="page-pill active">{{ p }}</span>
+          {% else %}
+            <a class="page-pill" href="{{ url_for('admin_dashboard', view='starters', page=p) }}">{{ p }}</a>
+          {% endif %}
+        {% endfor %}
+      </div>
+    {% endif %}
 
   </div>
 </div>
-
-<script>
-(function(){
-  const table = document.getElementById('adminTable');
-  const copyBtn = document.getElementById('copyBtn');
-  const statusEl = document.getElementById('copyStatus');
-
-  const masterRowCheck = document.getElementById('masterRowCheck');
-  const selectAllBtn = document.getElementById('selectAllBtn');
-  const clearSelectionBtn = document.getElementById('clearSelectionBtn');
-
-  const colsAllBtn = document.getElementById('colsAllBtn');
-  const colsNoneBtn = document.getElementById('colsNoneBtn');
-  const colChecks = Array.from(document.querySelectorAll('.col-check'));
-
-  function setStatus(msg){
-    statusEl.textContent = msg || '';
-    if(msg){
-      setTimeout(()=>{ statusEl.textContent=''; }, 2800);
-    }
-  }
-
-  function setAllRowChecks(value){
-    table.querySelectorAll('tbody .row-check').forEach(cb => cb.checked = value);
-    masterRowCheck.checked = value;
-  }
-
-  masterRowCheck.addEventListener('change', () => setAllRowChecks(masterRowCheck.checked));
-  selectAllBtn.addEventListener('click', () => setAllRowChecks(true));
-  clearSelectionBtn.addEventListener('click', () => setAllRowChecks(false));
-
-  colsAllBtn.addEventListener('click', () => colChecks.forEach(ch => ch.checked = true));
-  colsNoneBtn.addEventListener('click', () => colChecks.forEach(ch => ch.checked = false));
-
-  function getSelectedColumns(){
-    return colChecks.filter(ch => ch.checked).map(ch => ch.dataset.col);
-  }
-
-  function escapeCell(text){
-    return String(text ?? '').replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim();
-  }
-
-  async function copyToClipboard(text){
-    if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(text);
-      return true;
-    }
-    const ta = document.createElement('textarea');
-    ta.value = text;
-    ta.style.position = 'fixed';
-    ta.style.left = '-9999px';
-    ta.style.top = '-9999px';
-    document.body.appendChild(ta);
-    ta.focus();
-    ta.select();
-    const ok = document.execCommand('copy');
-    document.body.removeChild(ta);
-    return ok;
-  }
-
-  copyBtn.addEventListener('click', async () => {
-    const selectedCols = getSelectedColumns();
-    if (selectedCols.length === 0){
-      setStatus('Choose at least one column.');
-      return;
-    }
-
-    const rows = Array.from(table.querySelectorAll('tbody tr.data-row'));
-    const selectedRows = rows.filter(r => r.querySelector('.row-check')?.checked);
-
-    if (selectedRows.length === 0){
-      setStatus('Select the rows you want first.');
-      return;
-    }
-
-    const headerMap = {
-      date: 'Date',
-      name: 'Name',
-      email: 'Email',
-      phone: 'Phone',
-      town: 'Town',
-      trade: 'Primary trade',
-      ticket: 'Primary ticket',
-      additional: 'Additional skills'
-    };
-
-    const lines = [];
-    lines.push(selectedCols.map(c => headerMap[c] || c).join('\t'));
-
-    for (const row of selectedRows){
-      const cells = selectedCols.map(colKey => {
-        const td = row.querySelector(`[data-col="${colKey}"]`);
-        return escapeCell(td ? td.textContent : '');
-      });
-      lines.push(cells.join('\t'));
-    }
-
-    const tsv = lines.join('\n');
-
-    try{
-      const ok = await copyToClipboard(tsv);
-      setStatus(ok ? `Copied ${selectedRows.length} row(s) ✓` : 'Copy failed.');
-    } catch(e){
-      setStatus('Copy failed.');
-    }
-  });
-})();
-</script>
 
 {% endblock %}
