@@ -47,7 +47,7 @@ def ensure_column(conn, table: str, column: str, coltype: str):
     """
     c = conn.cursor()
     c.execute(f"PRAGMA table_info({table})")
-    existing = {row["name"] for row in c.fetchall()}
+   existing = {row[1] for row in c.fetchall()}  # row[1] = column name in PRAGMA table_info
     if column not in existing:
         c.execute(f"ALTER TABLE {table} ADD COLUMN {column} {coltype}")
         conn.commit()
@@ -380,3 +380,4 @@ def export_contacts_csv():
 
 if __name__ == "__main__":
     app.run()
+
