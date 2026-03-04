@@ -28,7 +28,7 @@
 </header>
 
 <main class="container">
-  <h1>Candidate Registration test</h1>
+  <h1>Candidate Registration</h1>
   <p class="muted">Fill in your details and we’ll contact you about suitable work.</p>
 
   {% if error %}
@@ -84,11 +84,15 @@
         <div class="hint">Allowed: PDF, DOC, DOCX, JPG, PNG • Max 5MB</div>
       </div>
 
-      <!-- UPDATED: 5 individual ticket inputs (all optional) -->
+      <!-- UPDATED TICKETS SECTION -->
       <div class="field full">
         <label>Upload Tickets (optional — up to 5 files)</label>
 
-        <div style="display:flex; flex-direction:column; gap:10px;">
+        <div style="
+            display:grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap:10px;
+        ">
           <input type="file" name="tickets" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
           <input type="file" name="tickets" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
           <input type="file" name="tickets" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
@@ -115,4 +119,3 @@
 
 </body>
 </html>
-
