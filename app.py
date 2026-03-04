@@ -15,6 +15,9 @@ UPLOAD_FOLDER = "uploads"
 ALLOWED_EXTENSIONS = {"pdf", "doc", "docx", "jpg", "jpeg", "png"}
 MAX_UPLOAD_MB = 5
 
+# NEW: max number of ticket files allowed
+MAX_TICKETS_FILES = 5
+
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
 
@@ -195,8 +198,9 @@ def register():
             return render_template("register.html", error=error)
 
         cv_filename = None
-        tickets_filename = None
+        tickets_filename = None  # will become "file1|file2|file3" if multiple
 
+        # ---- CV (single file, same as before) ----
         cv_file = request.files.get("cv")
         if cv_file and cv_file.filename:
             if allowed_file(cv_file.filename):
@@ -205,18 +209,32 @@ def register():
                 cv_file.save(os.path.join(UPLOAD_FOLDER, cv_filename))
             else:
                 error = "Invalid CV file type. Use PDF, DOC, DOCX, JPG or PNG."
+                return render_template("register.html", error=error)
 
-        tickets_file = request.files.get("tickets")
-        if tickets_file and tickets_file.filename and not error:
-            if allowed_file(tickets_file.filename):
-                safe = secure_filename(tickets_file.filename)
-                tickets_filename = f"{first_name}_{last_name}_TICKETS_{safe}"
-                tickets_file.save(os.path.join(UPLOAD_FOLDER, tickets_filename))
-            else:
-                error = "Invalid tickets file type. Use PDF, DOC, DOCX, JPG or PNG."
+        # ---- Tickets (UP TO 5 files) ----
+        ticket_files = request.files.getlist("tickets")
+        # Remove empty items (browser can send an empty file input)
+        ticket_files = [f for f in ticket_files if f and f.filename]
 
-        if error:
+        if len(ticket_files) > MAX_TICKETS_FILES:
+            error = f"You can upload up to {MAX_TICKETS_FILES} ticket files."
             return render_template("register.html", error=error)
+
+        saved_ticket_names = []
+        for idx, f in enumerate(ticket_files, start=1):
+            if not allowed_file(f.filename):
+                error = "Invalid tickets file type. Use PDF, DOC, DOCX, JPG or PNG."
+                return render_template("register.html", error=error)
+
+            safe = secure_filename(f.filename)
+            # Add index so 5 uploads don't overwrite each other
+            filename = f"{first_name}_{last_name}_TICKET{idx}_{safe}"
+            f.save(os.path.join(UPLOAD_FOLDER, filename))
+            saved_ticket_names.append(filename)
+
+        if saved_ticket_names:
+            # store as one string in DB
+            tickets_filename = "|".join(saved_ticket_names)
 
         now = datetime.utcnow().isoformat()
 
