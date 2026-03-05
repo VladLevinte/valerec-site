@@ -81,6 +81,13 @@
         <input type="text" name="utr" inputmode="numeric" placeholder="If you have one">
       </div>
 
+      <!-- ✅ Sharecode (optional) -->
+      <div class="field">
+        <label>Sharecode (optional)</label>
+        <input type="text" name="sharecode" placeholder="Example - AB1CD2EF3">
+        <div class="hint">If you don’t have a UK passport or birth certificate, please provide a Sharecode.</div>
+      </div>
+
       <div class="field">
         <label>National Insurance Number *</label>
         <input type="text" name="national_insurance" required placeholder="e.g. QQ123456C" autocapitalize="characters">
@@ -102,16 +109,7 @@
         <div class="hint">Allowed: JPG, PNG, PDF • Max 5MB</div>
       </div>
 
-      <!-- ✅ NEW: Share code (optional) -->
-      <div class="field full">
-        <label>Share code (optional)</label>
-        <input type="text" name="share_code" placeholder="Example: S1234-5678-9012-3456">
-        <div class="hint">
-          If you do not have a UK passport or UK birth certificate, please provide your Home Office share code (Right to Work).
-        </div>
-      </div>
-
-      <!-- ✅ OPTIONAL: Additional tickets upload (up to 5) -->
+      <!-- ✅ OPTIONAL tickets uploader (up to 5) -->
       <div class="field full">
         <label>Upload Tickets (optional — up to 5 files)</label>
 
@@ -136,8 +134,22 @@
         </div>
 
         <div id="ticketsHiddenInputs" style="display:none;"></div>
-
         <div id="ticketsError" style="margin-top:8px; color:#b00020; font-size:13px; display:none;"></div>
+      </div>
+
+      <!-- ✅ Consent block (required) -->
+      <div class="field full">
+        <label style="display:flex; gap:10px; align-items:flex-start; font-weight:800;">
+          <input type="checkbox" name="consent" required style="margin-top:3px;">
+          <span>
+            I confirm I have read the <a href="/privacy" target="_blank">Privacy Policy</a> and agree for Vale Recruitment to process my personal information.
+            <br><br>
+            <span class="hint" style="display:block;">
+              Please note: you are providing Vale Recruitment with personal and bank details which may be shared with the relevant payroll company for payment setup.
+              If you do not wish Vale Recruitment or any relevant payroll company to hold or process your details, please contact us immediately.
+            </span>
+          </span>
+        </label>
       </div>
 
     </div>
