@@ -1,4 +1,7 @@
-from flask import Flask, render_template, request, redirect, url_for, send_file, send_from_directory, session
+from flask import (
+    Flask, render_template, request, redirect, url_for,
+    send_file, send_from_directory, session, jsonify
+)
 import sqlite3
 import os
 import csv
@@ -18,7 +21,8 @@ ALLOWED_EXTENSIONS = {"pdf", "doc", "docx", "jpg", "jpeg", "png"}
 MAX_UPLOAD_MB_EACH = 5
 MAX_TICKETS_FILES = 5
 
-app.config["MAX_CONTENT_LENGTH"] = (MAX_UPLOAD_MB_EACH * (MAX_TICKETS_FILES + 3)) * 1024 * 1024
+# Allow a bit more because multi uploads can exceed 5MB total
+app.config["MAX_CONTENT_LENGTH"] = (MAX_UPLOAD_MB_EACH * (MAX_TICKETS_FILES + 6)) * 1024 * 1024
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -44,6 +48,24 @@ def ensure_column(conn, table, column, coltype):
     if column not in existing:
         c.execute(f"ALTER TABLE {table} ADD COLUMN {column} {coltype}")
         conn.commit()
+
+
+def safe_remove_file(filename):
+    if not filename:
+        return
+    path = os.path.join(UPLOAD_FOLDER, filename)
+    try:
+        if os.path.exists(path):
+            os.remove(path)
+    except Exception:
+        pass
+
+
+def split_files(piped):
+    piped = (piped or "").strip()
+    if not piped:
+        return []
+    return [x for x in piped.split("|") if x]
 
 
 def init_db():
@@ -106,9 +128,16 @@ def init_db():
 
     conn.commit()
 
+    # ensure columns exist (safe for old databases)
     ensure_column(conn, "registrations", "created_date", "TEXT")
     ensure_column(conn, "contact_requests", "created_date", "TEXT")
     ensure_column(conn, "new_starters", "tickets_filename", "TEXT")
+
+    # starter “notes” fields (editable in admin expanded row)
+    ensure_column(conn, "new_starters", "client_name", "TEXT")
+    ensure_column(conn, "new_starters", "start_date", "TEXT")
+    ensure_column(conn, "new_starters", "job_postcode", "TEXT")
+    ensure_column(conn, "new_starters", "pay_rate", "TEXT")
 
     conn.close()
 
@@ -176,7 +205,6 @@ def privacy():
 @app.route("/contact", methods=["GET", "POST"])
 def contact():
     error = None
-
     if request.method == "POST":
         name = request.form["name"]
         email = request.form["email"]
@@ -283,7 +311,7 @@ def candidate_register():
         email = request.form["email"]
         phone = request.form["phone"]
         town = request.form["town"]
-        primary_trade = request.form["primary_trade"]
+        primary_trade = request.form["primary_trade"]  # this is “Position you’re starting” label in template
         primary_ticket = request.form["primary_ticket"]
 
         utr = request.form.get("utr", "")
@@ -328,11 +356,13 @@ def candidate_register():
             INSERT INTO new_starters
             (first_name,last_name,email,phone,town,primary_trade,primary_ticket,
              utr,national_insurance,sort_code,account_number,
-             id_document_filename,tickets_filename,created_date)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             id_document_filename,tickets_filename,created_date,
+             client_name,start_date,job_postcode,pay_rate)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (first_name, last_name, email, phone, town, primary_trade, primary_ticket,
               utr, national_insurance, sort_code, account_number,
-              id_document_filename, tickets_filename, created_date))
+              id_document_filename, tickets_filename, created_date,
+              None, None, None, None))
         conn.commit()
         conn.close()
 
@@ -353,13 +383,30 @@ def admin_download(filename):
     return send_from_directory(UPLOAD_FOLDER, filename, as_attachment=True)
 
 
-# ---------------- Admin dashboard (two views) ----------------
+# ---------------- Search helpers ----------------
+def build_like_where(columns, q):
+    """
+    returns (where_sql, params)
+    """
+    q = (q or "").strip()
+    if not q:
+        return "", []
+    like = f"%{q}%"
+    parts = [f"{col} LIKE ?" for col in columns]
+    where = " WHERE " + " OR ".join(parts)
+    params = [like] * len(columns)
+    return where, params
+
+
+# ---------------- Admin dashboard (two views + search) ----------------
 @app.route("/admin")
 @admin_required
 def admin_dashboard():
     view = request.args.get("view", "candidates").strip().lower()
     if view not in ("candidates", "starters"):
         view = "candidates"
+
+    q = (request.args.get("q") or "").strip()
 
     per_page = 15
     page = request.args.get("page", 1, type=int)
@@ -370,60 +417,153 @@ def admin_dashboard():
     c = conn.cursor()
 
     if view == "candidates":
-        c.execute("SELECT COUNT(*) AS cnt FROM registrations")
+        where, params = build_like_where(
+            ["first_name", "last_name", "email", "phone", "town", "primary_trade", "primary_ticket", "additional_info"],
+            q
+        )
+        c.execute(f"SELECT COUNT(*) AS cnt FROM registrations{where}", params)
         total = c.fetchone()["cnt"]
         total_pages = max(1, math.ceil(total / per_page))
         if page > total_pages:
             page = total_pages
 
         offset = (page - 1) * per_page
-        c.execute("SELECT * FROM registrations ORDER BY id DESC LIMIT ? OFFSET ?", (per_page, offset))
+        c.execute(
+            f"SELECT * FROM registrations{where} ORDER BY id DESC LIMIT ? OFFSET ?",
+            params + [per_page, offset]
+        )
         rows = c.fetchall()
         conn.close()
 
         candidates = []
         for r in rows:
             d = dict(r)
-            tf = (d.get("tickets_filename") or "").strip()
-            d["tickets_files"] = [x for x in tf.split("|") if x] if tf else []
-            candidates.append(d)
+            d["tickets_files"] = split_files(d.get("tickets_filename"))
+            return_candidate = d
+            candidates.append(return_candidate)
 
         return render_template(
             "admin.html",
             view=view,
+            q=q,
             candidates=candidates,
             starters=[],
             page=page,
             total_pages=total_pages
         )
 
-    # view == starters
-    c.execute("SELECT COUNT(*) AS cnt FROM new_starters")
+    # starters
+    where, params = build_like_where(
+        ["first_name", "last_name", "email", "phone", "town", "primary_trade", "primary_ticket",
+         "utr", "national_insurance", "sort_code", "account_number",
+         "client_name", "start_date", "job_postcode", "pay_rate"],
+        q
+    )
+    c.execute(f"SELECT COUNT(*) AS cnt FROM new_starters{where}", params)
     total = c.fetchone()["cnt"]
     total_pages = max(1, math.ceil(total / per_page))
     if page > total_pages:
         page = total_pages
 
     offset = (page - 1) * per_page
-    c.execute("SELECT * FROM new_starters ORDER BY id DESC LIMIT ? OFFSET ?", (per_page, offset))
+    c.execute(
+        f"SELECT * FROM new_starters{where} ORDER BY id DESC LIMIT ? OFFSET ?",
+        params + [per_page, offset]
+    )
     rows = c.fetchall()
     conn.close()
 
     starters = []
     for r in rows:
         d = dict(r)
-        tf = (d.get("tickets_filename") or "").strip()
-        d["tickets_files"] = [x for x in tf.split("|") if x] if tf else []
+        d["tickets_files"] = split_files(d.get("tickets_filename"))
         starters.append(d)
 
     return render_template(
         "admin.html",
         view=view,
+        q=q,
         candidates=[],
         starters=starters,
         page=page,
         total_pages=total_pages
     )
+
+
+# ---------------- Admin: save starter notes (expanded row) ----------------
+@app.route("/admin/starter-notes/<int:starter_id>", methods=["POST"])
+@admin_required
+def save_starter_notes(starter_id):
+    data = request.get_json(silent=True) or {}
+    client_name = (data.get("client_name") or "").strip()
+    start_date = (data.get("start_date") or "").strip()
+    job_postcode = (data.get("job_postcode") or "").strip()
+    pay_rate = (data.get("pay_rate") or "").strip()
+
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("""
+        UPDATE new_starters
+        SET client_name = ?, start_date = ?, job_postcode = ?, pay_rate = ?
+        WHERE id = ?
+    """, (client_name, start_date, job_postcode, pay_rate, starter_id))
+    conn.commit()
+    conn.close()
+
+    return jsonify({"ok": True})
+
+
+# ---------------- Admin: delete selected ----------------
+@app.route("/admin/delete", methods=["POST"])
+@admin_required
+def admin_delete():
+    view = (request.form.get("view") or "candidates").strip().lower()
+    ids_raw = request.form.get("ids", "").strip()
+    q = (request.form.get("q") or "").strip()
+    page = request.form.get("page", "1").strip()
+
+    # parse ids
+    ids = []
+    for part in ids_raw.split(","):
+        part = part.strip()
+        if part.isdigit():
+            ids.append(int(part))
+
+    if not ids:
+        return redirect(url_for("admin_dashboard", view=view, q=q, page=page))
+
+    conn = db_connect()
+    c = conn.cursor()
+
+    if view == "candidates":
+        # delete files then rows
+        qmarks = ",".join(["?"] * len(ids))
+        c.execute(f"SELECT cv_filename, tickets_filename FROM registrations WHERE id IN ({qmarks})", ids)
+        rows = c.fetchall()
+        for r in rows:
+            safe_remove_file(r["cv_filename"])
+            for f in split_files(r["tickets_filename"]):
+                safe_remove_file(f)
+
+        c.execute(f"DELETE FROM registrations WHERE id IN ({qmarks})", ids)
+        conn.commit()
+        conn.close()
+        return redirect(url_for("admin_dashboard", view="candidates", q=q, page=page))
+
+    # starters
+    qmarks = ",".join(["?"] * len(ids))
+    c.execute(f"SELECT id_document_filename, tickets_filename FROM new_starters WHERE id IN ({qmarks})", ids)
+    rows = c.fetchall()
+    for r in rows:
+        safe_remove_file(r["id_document_filename"])
+        for f in split_files(r["tickets_filename"]):
+            safe_remove_file(f)
+
+    c.execute(f"DELETE FROM new_starters WHERE id IN ({qmarks})", ids)
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for("admin_dashboard", view="starters", q=q, page=page))
 
 
 # ---------------- Exports ----------------
@@ -448,12 +588,7 @@ def export_candidates_csv():
     output = BytesIO(si.getvalue().encode("utf-8"))
     output.seek(0)
 
-    return send_file(
-        output,
-        mimetype="text/csv",
-        as_attachment=True,
-        download_name="candidates.csv"
-    )
+    return send_file(output, mimetype="text/csv", as_attachment=True, download_name="candidates.csv")
 
 
 @app.route("/admin/export-contacts")
@@ -477,12 +612,7 @@ def export_contacts_csv():
     output = BytesIO(si.getvalue().encode("utf-8"))
     output.seek(0)
 
-    return send_file(
-        output,
-        mimetype="text/csv",
-        as_attachment=True,
-        download_name="contacts.csv"
-    )
+    return send_file(output, mimetype="text/csv", as_attachment=True, download_name="contacts.csv")
 
 
 if __name__ == "__main__":
