@@ -2,10 +2,11 @@
 {% block content %}
 
 <style>
+/* Keep page clean, but allow horizontal scrolling INSIDE table wraps */
 html, body { max-width: 100%; overflow-x: hidden; }
 
 :root{
-  --admin-font: 13px;  /* will be overridden by localStorage */
+  --admin-font: 13px;  /* can be overridden by localStorage */
 }
 
 .admin-wrapper{
@@ -30,7 +31,6 @@ html, body { max-width: 100%; overflow-x: hidden; }
 }
 .btn:hover{ opacity: .88; }
 .btn.secondary{ background: #1f2f4d; }
-.btn.danger{ background: #8b0000; }
 .btn.light{ background: #e9eef7; color:#0b1b34; }
 .btn.light:hover{ opacity: .95; }
 
@@ -116,50 +116,25 @@ html, body { max-width: 100%; overflow-x: hidden; }
   font-weight:700;
 }
 
+/* ✅ Horizontal scroll bar inside the table area (desktop + mobile) */
 .table-wrap{
   width: 100%;
   border-radius: 12px;
   border: 1px solid #e6e6e6;
   background: #fff;
-  overflow: hidden; /* desktop stays clean */
+  overflow-x: auto;                 /* <-- bar appears when needed */
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
-/* ✅ MOBILE FIX: allow swipe left/right inside tables */
-@media (max-width: 980px){
-  .table-wrap{
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    touch-action: pan-x;
-  }
-  /* Make tables wider than phone so they can scroll horizontally */
-  #candidatesTable{ min-width: 1150px; }
-  #startersTable{ min-width: 1300px; }
-
-  /* Keep rows readable on mobile (don’t wrap everything) */
-  .admin-table th, .admin-table td{
-    white-space: nowrap !important;
-  }
-
-  /* But allow additional skills to wrap if it exists */
-  td[data-col="additional"]{
-    white-space: normal !important;
-    min-width: 260px;
-  }
-
-  /* Expand panel inputs on mobile should be full width */
-  .expand-panel input, .expand-panel textarea{
-    width: 100%;
-    box-sizing: border-box;
-  }
-}
-
+/* Keep table sizing stable + resizable columns work well */
 .admin-table{
-  width: 100%;
+  width: max(100%, 1200px);         /* allow table to be wider when needed */
   border-collapse: collapse;
   table-layout: fixed;
   font-size: var(--admin-font);
 }
+
 .admin-table th, .admin-table td{
   border-bottom: 1px solid #eeeeee;
   padding: 7px 8px;
@@ -169,7 +144,13 @@ html, body { max-width: 100%; overflow-x: hidden; }
   overflow-wrap: anywhere;
   word-break: break-word;
 }
-.admin-table thead th{ background: #f7f9fc; font-weight: 800; }
+
+.admin-table thead th{
+  background: #f7f9fc;
+  font-weight: 800;
+  position: relative;              /* needed for resizer handle */
+}
+
 .admin-table tbody tr:nth-child(even){ background:#fafafa; }
 .admin-table tbody tr:hover{ background:#f2f6ff; }
 
@@ -194,9 +175,10 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .col-ni{ width: 120px; }
 .col-sort{ width: 92px; }
 .col-acc{ width: 110px; }
-.col-id{ width: 120px; }
+.col-id{ width: 120px; }    /* slightly wider so Sharecode fits */
 .col-files{ width: 150px; }
 
+/* Expand toggle button */
 .toggle-btn{
   width: 26px;
   height: 26px;
@@ -217,6 +199,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
   padding: 14px;
   border-top: 1px dashed #dfe6f2;
 }
+
 .panel-grid{
   display:grid;
   grid-template-columns: 1fr 1fr 1fr 1fr;
@@ -275,6 +258,18 @@ html, body { max-width: 100%; overflow-x: hidden; }
   background:#fff;
 }
 
+/* ✅ Column resize handle */
+.col-resizer{
+  position:absolute;
+  top:0;
+  right:0;
+  width:10px;
+  height:100%;
+  cursor: col-resize;
+  user-select: none;
+  touch-action: none;
+}
+
 @media (max-width: 980px){
   .panel-grid{ grid-template-columns: 1fr 1fr; }
   .two-cols{ grid-template-columns: 1fr; }
@@ -318,11 +313,10 @@ html, body { max-width: 100%; overflow-x: hidden; }
     {% if view == 'candidates' %}
       <h2 style="margin: 0 0 6px;">New Candidates</h2>
 
-      <!-- Copy + Delete -->
+      <!-- Copy -->
       <div class="copy-toolbar">
         <div class="row">
           <button class="btn" id="copyBtn" type="button">Copy selected rows</button>
-          <button class="btn danger" id="deleteBtn" type="button">Delete candidate(s)</button>
           <span class="small-note" id="copyStatus"></span>
         </div>
 
@@ -425,11 +419,10 @@ html, body { max-width: 100%; overflow-x: hidden; }
     {% if view == 'starters' %}
       <h2 style="margin: 0 0 6px;">New Starters</h2>
 
-      <!-- Copy + Delete for starters -->
+      <!-- Copy -->
       <div class="copy-toolbar">
         <div class="row">
           <button class="btn" id="copyBtnS" type="button">Copy selected rows</button>
-          <button class="btn danger" id="deleteBtnS" type="button">Delete candidate(s)</button>
           <span class="small-note" id="copyStatusS"></span>
         </div>
 
@@ -524,9 +517,9 @@ html, body { max-width: 100%; overflow-x: hidden; }
               <td>
                 {% if s["id_document_filename"] %}
                   <a class="table-link" href="{{ url_for('admin_download', filename=s['id_document_filename']) }}">Download</a>
-                  {% if s.get("share_code") %}
-                    <div class="small-note" style="margin-top:6px;">
-                      Share code: <b>{{ s["share_code"] }}</b>
+                  {% if s.get('sharecode') %}
+                    <div style="margin-top:6px; font-size:12px; color:#56627a;">
+                      Sharecode: <b>{{ s.get('sharecode') }}</b>
                     </div>
                   {% endif %}
                 {% else %}
@@ -557,7 +550,8 @@ html, body { max-width: 100%; overflow-x: hidden; }
                     </div>
                     <div class="pfield">
                       <label>Start date</label>
-                      <input type="text" class="note-start" value="{{ s['start_date'] or '' }}" placeholder="e.g. 09.03">
+                      <!-- ✅ calendar picker -->
+                      <input type="date" class="note-start" value="{{ s['start_date'] or '' }}">
                     </div>
                     <div class="pfield">
                       <label>Job postcode</label>
@@ -605,14 +599,6 @@ html, body { max-width: 100%; overflow-x: hidden; }
       </div>
     {% endif %}
 
-    <!-- Delete form (hidden) -->
-    <form id="deleteForm" method="POST" action="{{ url_for('admin_delete') }}" style="display:none;">
-      <input type="hidden" name="view" id="delView" value="{{ view }}">
-      <input type="hidden" name="ids" id="delIds" value="">
-      <input type="hidden" name="q" value="{{ q }}">
-      <input type="hidden" name="page" value="{{ page }}">
-    </form>
-
   </div>
 </div>
 
@@ -641,7 +627,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
     applyFontSize(Math.min(18, cur + 1));
   });
 
-  // ---------- Helpers ----------
+  // ---------- Clipboard helpers ----------
   function escapeCell(text){
     return String(text ?? '').replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim();
   }
@@ -662,34 +648,6 @@ html, body { max-width: 100%; overflow-x: hidden; }
     const ok = document.execCommand('copy');
     document.body.removeChild(ta);
     return ok;
-  }
-
-  function getSelectedIds(table){
-    const rows = Array.from(table.querySelectorAll('tbody tr.data-row, tbody tr.starter-row'));
-    const selected = rows.filter(r => r.querySelector('.row-check')?.checked);
-    return selected.map(r => r.getAttribute("data-id")).filter(Boolean);
-  }
-
-  // ---------- Delete ----------
-  function setupDelete(btnId, tableId, viewValue){
-    const btn = document.getElementById(btnId);
-    const table = document.getElementById(tableId);
-    const form = document.getElementById("deleteForm");
-    if(!btn || !table || !form) return;
-
-    btn.addEventListener("click", () => {
-      const ids = getSelectedIds(table);
-      if(ids.length === 0){
-        alert("Select at least one person first.");
-        return;
-      }
-      const ok = confirm(`Delete ${ids.length} record(s)? This cannot be undone.`);
-      if(!ok) return;
-
-      document.getElementById("delView").value = viewValue;
-      document.getElementById("delIds").value = ids.join(",");
-      form.submit();
-    });
   }
 
   // ---------- Master checkbox ----------
@@ -811,7 +769,16 @@ html, body { max-width: 100%; overflow-x: hidden; }
     const table = document.getElementById("startersTable");
     if(!table) return;
 
-    function buildTexts(rowEl, panelEl){
+    function pad2(n){ return String(n).padStart(2,'0'); }
+    function formatDateForChecking(iso){
+      // iso: YYYY-MM-DD -> DD.MM
+      if(!iso || typeof iso !== 'string') return '';
+      const parts = iso.split('-');
+      if(parts.length !== 3) return iso;
+      return `${pad2(parts[2])}.${pad2(parts[1])}`;
+    }
+
+    function buildTexts(rowEl, expandRow){
       const name = rowEl.dataset.name || "";
       const phone = rowEl.dataset.phone || "";
       const email = rowEl.dataset.email || "";
@@ -822,14 +789,15 @@ html, body { max-width: 100%; overflow-x: hidden; }
       const sort = rowEl.dataset.sort || "";
       const acc = rowEl.dataset.acc || "";
 
-      const client = (panelEl.querySelector(".note-client")?.value || "").trim();
-      const start = (panelEl.querySelector(".note-start")?.value || "").trim();
-      const postcode = (panelEl.querySelector(".note-postcode")?.value || "").trim();
-      const pay = (panelEl.querySelector(".note-pay")?.value || "").trim();
+      const client = (expandRow.querySelector(".note-client")?.value || "").trim();
+      const startIso = (expandRow.querySelector(".note-start")?.value || "").trim();
+      const startPretty = formatDateForChecking(startIso);
+      const postcode = (expandRow.querySelector(".note-postcode")?.value || "").trim();
+      const pay = (expandRow.querySelector(".note-pay")?.value || "").trim();
 
       const checking =
 `${name}
-${start}
+${startPretty}
 ${pay}
 ${trade}
 ${postcode}
@@ -846,8 +814,8 @@ Ni, ${ni}
 Sort code ${sort}
 Account number ${acc}`.trim();
 
-      panelEl.querySelector(".for-checking").value = checking;
-      panelEl.querySelector(".for-payroll").value = payroll;
+      expandRow.querySelector(".for-checking").value = checking;
+      expandRow.querySelector(".for-payroll").value = payroll;
     }
 
     table.querySelectorAll("tbody tr.starter-row").forEach(row => {
@@ -859,12 +827,10 @@ Account number ${acc}`.trim();
       const saveBtn = expandRow.querySelector(".save-notes");
       const status = expandRow.querySelector(".save-status");
 
-      const inputs = [
-        expandRow.querySelector(".note-client"),
-        expandRow.querySelector(".note-start"),
-        expandRow.querySelector(".note-postcode"),
-        expandRow.querySelector(".note-pay")
-      ].filter(Boolean);
+      const inputClient = expandRow.querySelector(".note-client");
+      const inputStart  = expandRow.querySelector(".note-start");
+      const inputPost   = expandRow.querySelector(".note-postcode");
+      const inputPay    = expandRow.querySelector(".note-pay");
 
       function setStatus(msg){
         if(!status) return;
@@ -872,8 +838,11 @@ Account number ${acc}`.trim();
         if(msg) setTimeout(()=> status.textContent="", 2000);
       }
 
+      // initial fill
       buildTexts(row, expandRow);
-      inputs.forEach(inp => inp.addEventListener("input", () => buildTexts(row, expandRow)));
+
+      [inputClient, inputStart, inputPost, inputPay].filter(Boolean)
+        .forEach(inp => inp.addEventListener("input", () => buildTexts(row, expandRow)));
 
       toggleBtn.addEventListener("click", () => {
         const isOpen = expandRow.style.display !== "none";
@@ -886,16 +855,22 @@ Account number ${acc}`.trim();
         }else{
           expandRow.style.display = "";
           toggleBtn.textContent = "⌄";
+
+          // ✅ default start date to TODAY when opening (if empty)
+          if(inputStart && !inputStart.value){
+            inputStart.value = new Date().toISOString().slice(0,10);
+          }
+
           buildTexts(row, expandRow);
         }
       });
 
       saveBtn.addEventListener("click", async () => {
         const payload = {
-          client_name: inputs[0]?.value || "",
-          start_date: inputs[1]?.value || "",
-          job_postcode: inputs[2]?.value || "",
-          pay_rate: inputs[3]?.value || ""
+          client_name: inputClient?.value || "",
+          start_date: inputStart?.value || "",
+          job_postcode: inputPost?.value || "",
+          pay_rate: inputPay?.value || ""
         };
 
         try{
@@ -921,16 +896,56 @@ Account number ${acc}`.trim();
     });
   }
 
+  // ---------- Column resizing (Excel-like) ----------
+  function makeResizable(table){
+    if(!table) return;
+    const ths = Array.from(table.querySelectorAll("thead th"));
+    ths.forEach((th, idx) => {
+      // Skip tiny checkbox columns sometimes but still OK to resize all:
+      const resizer = document.createElement("div");
+      resizer.className = "col-resizer";
+      th.appendChild(resizer);
+
+      let startX, startWidth;
+
+      function onMove(e){
+        const clientX = (e.touches && e.touches[0]) ? e.touches[0].clientX : e.clientX;
+        const dx = clientX - startX;
+        const newW = Math.max(40, startWidth + dx);
+        th.style.width = newW + "px";
+      }
+
+      function onUp(){
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
+        document.removeEventListener("touchmove", onMove);
+        document.removeEventListener("touchend", onUp);
+      }
+
+      function onDown(e){
+        e.preventDefault();
+        startX = (e.touches && e.touches[0]) ? e.touches[0].clientX : e.clientX;
+        startWidth = th.getBoundingClientRect().width;
+        document.addEventListener("mousemove", onMove);
+        document.addEventListener("mouseup", onUp);
+        document.addEventListener("touchmove", onMove, {passive:false});
+        document.addEventListener("touchend", onUp);
+      }
+
+      resizer.addEventListener("mousedown", onDown);
+      resizer.addEventListener("touchstart", onDown, {passive:false});
+    });
+  }
+
+  // init
   setupMaster("masterRowCheckC", "candidatesTable");
   setupMaster("masterRowCheckS", "startersTable");
-
   setupCopyCandidates();
   setupCopyStarters();
-
-  setupDelete("deleteBtn", "candidatesTable", "candidates");
-  setupDelete("deleteBtnS", "startersTable", "starters");
-
   setupStarterExpand();
+
+  makeResizable(document.getElementById("candidatesTable"));
+  makeResizable(document.getElementById("startersTable"));
 })();
 </script>
 
