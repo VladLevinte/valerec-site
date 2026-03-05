@@ -31,6 +31,8 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .btn:hover{ opacity: .88; }
 .btn.secondary{ background: #1f2f4d; }
 .btn.danger{ background: #8b0000; }
+.btn.light{ background: #e9eef7; color:#0b1b34; }
+.btn.light:hover{ opacity: .95; }
 
 .top-actions{ display:flex; flex-wrap:wrap; gap:10px; margin: 14px 0 10px; }
 
@@ -119,7 +121,37 @@ html, body { max-width: 100%; overflow-x: hidden; }
   border-radius: 12px;
   border: 1px solid #e6e6e6;
   background: #fff;
-  overflow: hidden; /* no horizontal scroll by default */
+  overflow: hidden; /* desktop stays clean */
+}
+
+/* ✅ MOBILE FIX: allow swipe left/right inside tables */
+@media (max-width: 980px){
+  .table-wrap{
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x;
+  }
+  /* Make tables wider than phone so they can scroll horizontally */
+  #candidatesTable{ min-width: 1150px; }
+  #startersTable{ min-width: 1300px; }
+
+  /* Keep rows readable on mobile (don’t wrap everything) */
+  .admin-table th, .admin-table td{
+    white-space: nowrap !important;
+  }
+
+  /* But allow additional skills to wrap if it exists */
+  td[data-col="additional"]{
+    white-space: normal !important;
+    min-width: 260px;
+  }
+
+  /* Expand panel inputs on mobile should be full width */
+  .expand-panel input, .expand-panel textarea{
+    width: 100%;
+    box-sizing: border-box;
+  }
 }
 
 .admin-table{
@@ -162,7 +194,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .col-ni{ width: 120px; }
 .col-sort{ width: 92px; }
 .col-acc{ width: 110px; }
-.col-id{ width: 90px; }
+.col-id{ width: 120px; }
 .col-files{ width: 150px; }
 
 .toggle-btn{
@@ -180,9 +212,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 }
 .toggle-btn:hover{ background:#f2f6ff; }
 
-.expand-row{
-  background:#fff;
-}
+.expand-row{ background:#fff; }
 .expand-panel{
   padding: 14px;
   border-top: 1px dashed #dfe6f2;
@@ -494,6 +524,11 @@ html, body { max-width: 100%; overflow-x: hidden; }
               <td>
                 {% if s["id_document_filename"] %}
                   <a class="table-link" href="{{ url_for('admin_download', filename=s['id_document_filename']) }}">Download</a>
+                  {% if s.get("share_code") %}
+                    <div class="small-note" style="margin-top:6px;">
+                      Share code: <b>{{ s["share_code"] }}</b>
+                    </div>
+                  {% endif %}
                 {% else %}
                   —
                 {% endif %}
@@ -752,7 +787,6 @@ html, body { max-width: 100%; overflow-x: hidden; }
       for(const row of selectedRows){
         const cells = selectedCols.map(colKey => {
           const td = row.querySelector(`[data-col="${colKey}"]`);
-          // Some of those are stored as data attributes / extra fields (client/start/postcode/pay)
           if(td) return escapeCell(td.textContent);
           if(colKey === "client") return escapeCell(row.dataset.client);
           if(colKey === "start") return escapeCell(row.dataset.start);
@@ -793,7 +827,6 @@ html, body { max-width: 100%; overflow-x: hidden; }
       const postcode = (panelEl.querySelector(".note-postcode")?.value || "").trim();
       const pay = (panelEl.querySelector(".note-pay")?.value || "").trim();
 
-      // For checking (as you specified)
       const checking =
 `${name}
 ${start}
@@ -803,7 +836,6 @@ ${postcode}
 ${client}
 ${phone}`.trim();
 
-      // For payroll (as you specified)
       const payroll =
 `Full name - ${name}
 Number - ${phone}
@@ -824,7 +856,6 @@ Account number ${acc}`.trim();
       const expandRow = table.querySelector(`tr.expand-row[data-expand-for="${id}"]`);
       if(!toggleBtn || !expandRow) return;
 
-      const panel = expandRow.querySelector(".expand-panel");
       const saveBtn = expandRow.querySelector(".save-notes");
       const status = expandRow.querySelector(".save-status");
 
@@ -841,17 +872,14 @@ Account number ${acc}`.trim();
         if(msg) setTimeout(()=> status.textContent="", 2000);
       }
 
-      // build initial texts
       buildTexts(row, expandRow);
-
-      // live update texts while typing (does not auto-save)
       inputs.forEach(inp => inp.addEventListener("input", () => buildTexts(row, expandRow)));
 
       toggleBtn.addEventListener("click", () => {
         const isOpen = expandRow.style.display !== "none";
-        // close all others
         table.querySelectorAll("tr.expand-row").forEach(r => r.style.display = "none");
         table.querySelectorAll(".toggle-btn").forEach(b => b.textContent = "›");
+
         if(isOpen){
           expandRow.style.display = "none";
           toggleBtn.textContent = "›";
@@ -878,12 +906,10 @@ Account number ${acc}`.trim();
           });
           const js = await res.json();
           if(js && js.ok){
-            // update row dataset (so copy/export uses latest)
             row.dataset.client = payload.client_name;
             row.dataset.start = payload.start_date;
             row.dataset.postcode = payload.job_postcode;
             row.dataset.pay = payload.pay_rate;
-
             setStatus("Saved ✓");
           }else{
             setStatus("Save failed");
@@ -895,7 +921,6 @@ Account number ${acc}`.trim();
     });
   }
 
-  // init based on which view exists
   setupMaster("masterRowCheckC", "candidatesTable");
   setupMaster("masterRowCheckS", "startersTable");
 
