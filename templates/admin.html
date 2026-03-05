@@ -2,11 +2,10 @@
 {% block content %}
 
 <style>
-/* Keep page clean, but allow horizontal scrolling INSIDE table wraps */
 html, body { max-width: 100%; overflow-x: hidden; }
 
 :root{
-  --admin-font: 13px;  /* can be overridden by localStorage */
+  --admin-font: 13px;
 }
 
 .admin-wrapper{
@@ -116,25 +115,22 @@ html, body { max-width: 100%; overflow-x: hidden; }
   font-weight:700;
 }
 
-/* ✅ Horizontal scroll bar inside the table area (desktop + mobile) */
 .table-wrap{
   width: 100%;
   border-radius: 12px;
   border: 1px solid #e6e6e6;
   background: #fff;
-  overflow-x: auto;                 /* <-- bar appears when needed */
+  overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
 }
 
-/* Keep table sizing stable + resizable columns work well */
 .admin-table{
-  width: max(100%, 1200px);         /* allow table to be wider when needed */
+  width: max(100%, 1200px);
   border-collapse: collapse;
   table-layout: fixed;
   font-size: var(--admin-font);
 }
-
 .admin-table th, .admin-table td{
   border-bottom: 1px solid #eeeeee;
   padding: 7px 8px;
@@ -144,20 +140,17 @@ html, body { max-width: 100%; overflow-x: hidden; }
   overflow-wrap: anywhere;
   word-break: break-word;
 }
-
 .admin-table thead th{
   background: #f7f9fc;
   font-weight: 800;
-  position: relative;              /* needed for resizer handle */
+  position: relative;
 }
-
 .admin-table tbody tr:nth-child(even){ background:#fafafa; }
 .admin-table tbody tr:hover{ background:#f2f6ff; }
 
 .table-link{ color:#0b1b34; text-decoration: underline; }
 .table-link:hover{ opacity: .85; }
 
-/* shared column widths */
 .col-select{ width: 34px; }
 .col-toggle{ width: 34px; }
 .col-date{ width: 92px; }
@@ -169,16 +162,14 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .col-ticket{ width: 145px; }
 .col-additional{ width: 240px; }
 .col-cv{ width: 90px; }
-.col-tickets{ width: 170px; }
+.col-tickets{ width: 200px; }
 
-/* tighter starter finance columns */
 .col-ni{ width: 120px; }
 .col-sort{ width: 92px; }
 .col-acc{ width: 110px; }
-.col-id{ width: 120px; }    /* slightly wider so Sharecode fits */
-.col-files{ width: 150px; }
+.col-id{ width: 120px; }
+.col-files{ width: 170px; }
 
-/* Expand toggle button */
 .toggle-btn{
   width: 26px;
   height: 26px;
@@ -199,7 +190,6 @@ html, body { max-width: 100%; overflow-x: hidden; }
   padding: 14px;
   border-top: 1px dashed #dfe6f2;
 }
-
 .panel-grid{
   display:grid;
   grid-template-columns: 1fr 1fr 1fr 1fr;
@@ -258,7 +248,6 @@ html, body { max-width: 100%; overflow-x: hidden; }
   background:#fff;
 }
 
-/* ✅ Column resize handle */
 .col-resizer{
   position:absolute;
   top:0;
@@ -293,7 +282,6 @@ html, body { max-width: 100%; overflow-x: hidden; }
       <a class="tab {% if view == 'starters' %}active{% endif %}" href="{{ url_for('admin_dashboard', view='starters', page=1, q=q) }}">New Starters</a>
     </div>
 
-    <!-- Search -->
     <form class="search-row" method="GET" action="{{ url_for('admin_dashboard') }}">
       <input type="hidden" name="view" value="{{ view }}">
       <input type="hidden" name="page" value="1">
@@ -309,11 +297,9 @@ html, body { max-width: 100%; overflow-x: hidden; }
       </div>
     </form>
 
-    <!-- ===================== NEW CANDIDATES ===================== -->
     {% if view == 'candidates' %}
       <h2 style="margin: 0 0 6px;">New Candidates</h2>
 
-      <!-- Copy -->
       <div class="copy-toolbar">
         <div class="row">
           <button class="btn" id="copyBtn" type="button">Copy selected rows</button>
@@ -337,7 +323,6 @@ html, body { max-width: 100%; overflow-x: hidden; }
         </div>
       </div>
 
-      <!-- Pagination -->
       <div class="pagination">
         {% for p in range(1, total_pages + 1) %}
           {% if p == page %}
@@ -391,7 +376,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
               <td>
                 {% if c["tickets_files"] and c["tickets_files"]|length > 0 %}
                   {% for f in c["tickets_files"] %}
-                    <a class="table-link" href="{{ url_for('admin_download', filename=f) }}">Ticket {{ loop.index }}</a>{% if not loop.last %}<br>{% endif %}
+                    <a class="table-link" href="{{ url_for('admin_download', filename=f) }}">Ticket {{ loop.index }} - {{ c["first_name"] }} {{ c["last_name"] }}</a>{% if not loop.last %}<br>{% endif %}
                   {% endfor %}
                 {% else %}
                   —
@@ -412,14 +397,11 @@ html, body { max-width: 100%; overflow-x: hidden; }
           {% endif %}
         {% endfor %}
       </div>
-
     {% endif %}
 
-    <!-- ===================== NEW STARTERS ===================== -->
     {% if view == 'starters' %}
       <h2 style="margin: 0 0 6px;">New Starters</h2>
 
-      <!-- Copy -->
       <div class="copy-toolbar">
         <div class="row">
           <button class="btn" id="copyBtnS" type="button">Copy selected rows</button>
@@ -494,6 +476,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
                 data-ni="{{ s['national_insurance'] }}"
                 data-sort="{{ s['sort_code'] }}"
                 data-acc="{{ s['account_number'] }}"
+                data-sharecode="{{ s.get('sharecode') or '' }}"
                 data-client="{{ s['client_name'] or '' }}"
                 data-start="{{ s['start_date'] or '' }}"
                 data-postcode="{{ s['job_postcode'] or '' }}"
@@ -530,7 +513,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
               <td>
                 {% if s["tickets_files"] and s["tickets_files"]|length > 0 %}
                   {% for f in s["tickets_files"] %}
-                    <a class="table-link" href="{{ url_for('admin_download', filename=f) }}">Ticket {{ loop.index }}</a>{% if not loop.last %}<br>{% endif %}
+                    <a class="table-link" href="{{ url_for('admin_download', filename=f) }}">Ticket {{ loop.index }} - {{ s["first_name"] }} {{ s["last_name"] }}</a>{% if not loop.last %}<br>{% endif %}
                   {% endfor %}
                 {% else %}
                   —
@@ -538,7 +521,6 @@ html, body { max-width: 100%; overflow-x: hidden; }
               </td>
             </tr>
 
-            <!-- hidden expandable area row -->
             <tr class="expand-row" data-expand-for="{{ s['id'] }}" style="display:none;">
               <td colspan="15">
                 <div class="expand-panel">
@@ -550,7 +532,6 @@ html, body { max-width: 100%; overflow-x: hidden; }
                     </div>
                     <div class="pfield">
                       <label>Start date</label>
-                      <!-- ✅ calendar picker -->
                       <input type="date" class="note-start" value="{{ s['start_date'] or '' }}">
                     </div>
                     <div class="pfield">
@@ -604,7 +585,6 @@ html, body { max-width: 100%; overflow-x: hidden; }
 
 <script>
 (function(){
-  // ---------- Font size control (A- / A+) ----------
   const key = "admin_font_size";
   const root = document.documentElement;
   const minus = document.getElementById("fontMinus");
@@ -627,7 +607,6 @@ html, body { max-width: 100%; overflow-x: hidden; }
     applyFontSize(Math.min(18, cur + 1));
   });
 
-  // ---------- Clipboard helpers ----------
   function escapeCell(text){
     return String(text ?? '').replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim();
   }
@@ -650,7 +629,6 @@ html, body { max-width: 100%; overflow-x: hidden; }
     return ok;
   }
 
-  // ---------- Master checkbox ----------
   function setupMaster(masterId, tableId){
     const master = document.getElementById(masterId);
     const table = document.getElementById(tableId);
@@ -661,7 +639,6 @@ html, body { max-width: 100%; overflow-x: hidden; }
     });
   }
 
-  // ---------- Copy (Candidates) ----------
   function setupCopyCandidates(){
     const table = document.getElementById("candidatesTable");
     const copyBtn = document.getElementById("copyBtn");
@@ -709,7 +686,6 @@ html, body { max-width: 100%; overflow-x: hidden; }
     });
   }
 
-  // ---------- Copy (Starters) ----------
   function setupCopyStarters(){
     const table = document.getElementById("startersTable");
     const copyBtn = document.getElementById("copyBtnS");
@@ -764,14 +740,12 @@ html, body { max-width: 100%; overflow-x: hidden; }
     });
   }
 
-  // ---------- Expand rows + save notes + build texts ----------
   function setupStarterExpand(){
     const table = document.getElementById("startersTable");
     if(!table) return;
 
     function pad2(n){ return String(n).padStart(2,'0'); }
     function formatDateForChecking(iso){
-      // iso: YYYY-MM-DD -> DD.MM
       if(!iso || typeof iso !== 'string') return '';
       const parts = iso.split('-');
       if(parts.length !== 3) return iso;
@@ -788,6 +762,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
       const ni = rowEl.dataset.ni || "";
       const sort = rowEl.dataset.sort || "";
       const acc = rowEl.dataset.acc || "";
+      const sharecode = (rowEl.dataset.sharecode || "").trim();
 
       const client = (expandRow.querySelector(".note-client")?.value || "").trim();
       const startIso = (expandRow.querySelector(".note-start")?.value || "").trim();
@@ -804,6 +779,8 @@ ${postcode}
 ${client}
 ${phone}`.trim();
 
+      const shareLine = sharecode ? `\nSharecode - ${sharecode}` : "";
+
       const payroll =
 `Full name - ${name}
 Number - ${phone}
@@ -812,7 +789,7 @@ ${town}
 Utr , ${utr}
 Ni, ${ni}
 Sort code ${sort}
-Account number ${acc}`.trim();
+Account number ${acc}${shareLine}`.trim();
 
       expandRow.querySelector(".for-checking").value = checking;
       expandRow.querySelector(".for-payroll").value = payroll;
@@ -838,7 +815,6 @@ Account number ${acc}`.trim();
         if(msg) setTimeout(()=> status.textContent="", 2000);
       }
 
-      // initial fill
       buildTexts(row, expandRow);
 
       [inputClient, inputStart, inputPost, inputPay].filter(Boolean)
@@ -856,7 +832,6 @@ Account number ${acc}`.trim();
           expandRow.style.display = "";
           toggleBtn.textContent = "⌄";
 
-          // ✅ default start date to TODAY when opening (if empty)
           if(inputStart && !inputStart.value){
             inputStart.value = new Date().toISOString().slice(0,10);
           }
@@ -896,12 +871,10 @@ Account number ${acc}`.trim();
     });
   }
 
-  // ---------- Column resizing (Excel-like) ----------
   function makeResizable(table){
     if(!table) return;
     const ths = Array.from(table.querySelectorAll("thead th"));
-    ths.forEach((th, idx) => {
-      // Skip tiny checkbox columns sometimes but still OK to resize all:
+    ths.forEach((th) => {
       const resizer = document.createElement("div");
       resizer.className = "col-resizer";
       th.appendChild(resizer);
@@ -937,9 +910,9 @@ Account number ${acc}`.trim();
     });
   }
 
-  // init
   setupMaster("masterRowCheckC", "candidatesTable");
   setupMaster("masterRowCheckS", "startersTable");
+
   setupCopyCandidates();
   setupCopyStarters();
   setupStarterExpand();
