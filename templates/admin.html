@@ -4,6 +4,10 @@
 <style>
 html, body { max-width: 100%; overflow-x: hidden; }
 
+:root{
+  --admin-font: 13px;  /* will be overridden by localStorage */
+}
+
 .admin-wrapper{
   width: 100vw;
   margin-left: calc(50% - 50vw);
@@ -11,7 +15,6 @@ html, body { max-width: 100%; overflow-x: hidden; }
   padding: 18px 14px;
   box-sizing: border-box;
 }
-
 .admin-inner{ max-width:none; margin:0; }
 
 .btn{
@@ -27,15 +30,13 @@ html, body { max-width: 100%; overflow-x: hidden; }
 }
 .btn:hover{ opacity: .88; }
 .btn.secondary{ background: #1f2f4d; }
-.btn.light{ background: #e9eef7; color:#0b1b34; }
+.btn.danger{ background: #8b0000; }
 
 .top-actions{ display:flex; flex-wrap:wrap; gap:10px; margin: 14px 0 10px; }
 
 .tabs{
-  display:flex;
-  gap:10px;
-  flex-wrap:wrap;
-  margin: 10px 0 14px;
+  display:flex; gap:10px; flex-wrap:wrap;
+  margin: 10px 0 12px;
 }
 .tab{
   padding: 8px 12px;
@@ -49,10 +50,24 @@ html, body { max-width: 100%; overflow-x: hidden; }
 }
 .tab:hover{ background:#f2f6ff; }
 .tab.active{
-  background:#0b1b34;
-  color:#fff;
-  border-color:#0b1b34;
+  background:#0b1b34; color:#fff; border-color:#0b1b34;
 }
+
+.search-row{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  align-items:center;
+  margin: 8px 0 14px;
+}
+.search-row input{
+  width: min(520px, 100%);
+  padding: 10px 12px;
+  border: 1px solid #d8deea;
+  border-radius: 10px;
+  font-size: 13px;
+}
+.search-row input:focus{ outline:none; border-color:#0b1b34; }
 
 .copy-toolbar{
   margin: 10px 0 14px;
@@ -104,53 +119,135 @@ html, body { max-width: 100%; overflow-x: hidden; }
   border-radius: 12px;
   border: 1px solid #e6e6e6;
   background: #fff;
-  overflow: hidden;
+  overflow: hidden; /* no horizontal scroll by default */
 }
+
 .admin-table{
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
-  font-size: 13px;
+  font-size: var(--admin-font);
 }
 .admin-table th, .admin-table td{
   border-bottom: 1px solid #eeeeee;
-  padding: 6px 8px;
+  padding: 7px 8px;
   text-align: left;
   vertical-align: top;
   white-space: normal;
   overflow-wrap: anywhere;
   word-break: break-word;
 }
-.admin-table thead th{ background: #f7f9fc; font-weight: 700; }
+.admin-table thead th{ background: #f7f9fc; font-weight: 800; }
 .admin-table tbody tr:nth-child(even){ background:#fafafa; }
 .admin-table tbody tr:hover{ background:#f2f6ff; }
-
-.col-select{ width: 34px; }
-.col-date{ width: 90px; }
-.col-name{ width: 130px; }
-.col-email{ width: 200px; }
-.col-phone{ width: 120px; }
-.col-town{ width: 115px; }
-.col-trade{ width: 130px; }
-.col-ticket{ width: 140px; }
-.col-additional{ width: 260px; }
-.col-cv{ width: 100px; }
-.col-tickets{ width: 170px; }
 
 .table-link{ color:#0b1b34; text-decoration: underline; }
 .table-link:hover{ opacity: .85; }
 
-.badge{
-  display:inline-block;
-  padding: 4px 8px;
-  border-radius: 999px;
-  background:#eef3ff;
-  border:1px solid #d8e4ff;
-  font-size:12px;
-  font-weight:800;
+/* shared column widths */
+.col-select{ width: 34px; }
+.col-toggle{ width: 34px; }
+.col-date{ width: 92px; }
+.col-name{ width: 140px; }
+.col-email{ width: 190px; }
+.col-phone{ width: 120px; }
+.col-town{ width: 120px; }
+.col-trade{ width: 135px; }
+.col-ticket{ width: 145px; }
+.col-additional{ width: 240px; }
+.col-cv{ width: 90px; }
+.col-tickets{ width: 170px; }
+
+/* tighter starter finance columns */
+.col-ni{ width: 120px; }
+.col-sort{ width: 92px; }
+.col-acc{ width: 110px; }
+.col-id{ width: 90px; }
+.col-files{ width: 150px; }
+
+.toggle-btn{
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  border: 1px solid #d8deea;
+  background: #fff;
+  cursor: pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:900;
   color:#0b1b34;
-  margin-right:6px;
-  margin-bottom:6px;
+}
+.toggle-btn:hover{ background:#f2f6ff; }
+
+.expand-row{
+  background:#fff;
+}
+.expand-panel{
+  padding: 14px;
+  border-top: 1px dashed #dfe6f2;
+}
+.panel-grid{
+  display:grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap:10px;
+}
+.panel-grid .pfield{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.panel-grid label{
+  font-size:12px;
+  font-weight:900;
+  color:#0b1b34;
+}
+.panel-grid input{
+  padding:10px 10px;
+  border:1px solid #d8deea;
+  border-radius:10px;
+  font-size:13px;
+}
+.panel-grid input:focus{ outline:none; border-color:#0b1b34; }
+
+.panel-actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  align-items:center;
+  margin-top:10px;
+}
+
+.two-cols{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:12px;
+  margin-top:12px;
+}
+.box{
+  border:1px solid #e6e6e6;
+  border-radius:12px;
+  padding:10px;
+  background:#fafafa;
+}
+.box h4{
+  margin:0 0 8px;
+  font-size:13px;
+}
+.box textarea{
+  width:100%;
+  min-height: 150px;
+  resize: vertical;
+  border:1px solid #d8deea;
+  border-radius:10px;
+  padding:10px;
+  font-size:13px;
+  background:#fff;
+}
+
+@media (max-width: 980px){
+  .panel-grid{ grid-template-columns: 1fr 1fr; }
+  .two-cols{ grid-template-columns: 1fr; }
 }
 </style>
 
@@ -166,44 +263,53 @@ html, body { max-width: 100%; overflow-x: hidden; }
       </div>
     </div>
 
-    <!-- Tabs -->
     <div class="tabs">
-      <a class="tab {% if view == 'candidates' %}active{% endif %}" href="{{ url_for('admin_dashboard', view='candidates', page=1) }}">New Candidates</a>
-      <a class="tab {% if view == 'starters' %}active{% endif %}" href="{{ url_for('admin_dashboard', view='starters', page=1) }}">New Starters</a>
+      <a class="tab {% if view == 'candidates' %}active{% endif %}" href="{{ url_for('admin_dashboard', view='candidates', page=1, q=q) }}">New Candidates</a>
+      <a class="tab {% if view == 'starters' %}active{% endif %}" href="{{ url_for('admin_dashboard', view='starters', page=1, q=q) }}">New Starters</a>
     </div>
+
+    <!-- Search -->
+    <form class="search-row" method="GET" action="{{ url_for('admin_dashboard') }}">
+      <input type="hidden" name="view" value="{{ view }}">
+      <input type="hidden" name="page" value="1">
+      <input name="q" value="{{ q }}" placeholder="Search (name, email, phone, town, trade, tickets, NI, etc.)">
+      <button class="btn secondary" type="submit">Search</button>
+      {% if q %}
+        <a class="btn light" href="{{ url_for('admin_dashboard', view=view, page=1) }}">Clear</a>
+      {% endif %}
+
+      <div style="margin-left:auto; display:flex; gap:8px;">
+        <button class="btn light" type="button" id="fontMinus">A−</button>
+        <button class="btn light" type="button" id="fontPlus">A+</button>
+      </div>
+    </form>
 
     <!-- ===================== NEW CANDIDATES ===================== -->
     {% if view == 'candidates' %}
       <h2 style="margin: 0 0 6px;">New Candidates</h2>
 
-      <!-- Copy controls (unchanged behaviour) -->
+      <!-- Copy + Delete -->
       <div class="copy-toolbar">
         <div class="row">
-          <button class="btn secondary" id="selectAllBtn" type="button">Select all rows</button>
-          <button class="btn secondary" id="clearSelectionBtn" type="button">Clear selection</button>
           <button class="btn" id="copyBtn" type="button">Copy selected rows</button>
+          <button class="btn danger" id="deleteBtn" type="button">Delete candidate(s)</button>
           <span class="small-note" id="copyStatus"></span>
         </div>
 
         <div class="row">
           <span class="small-note" style="margin-right:4px;">Columns to copy:</span>
-
           <label><input type="checkbox" class="col-check" data-col="name" checked> Name</label>
           <label><input type="checkbox" class="col-check" data-col="email" checked> Email</label>
           <label><input type="checkbox" class="col-check" data-col="phone" checked> Phone</label>
           <label><input type="checkbox" class="col-check" data-col="trade" checked> Trade</label>
-
           <label><input type="checkbox" class="col-check" data-col="date"> Date</label>
           <label><input type="checkbox" class="col-check" data-col="town"> Town</label>
           <label><input type="checkbox" class="col-check" data-col="ticket"> Ticket</label>
           <label><input type="checkbox" class="col-check" data-col="additional"> Additional skills</label>
-
-          <button class="btn light" id="colsAllBtn" type="button">All</button>
-          <button class="btn light" id="colsNoneBtn" type="button">None</button>
         </div>
 
         <div class="row">
-          <span class="small-note">Tip: Tick the rows you want → click “Copy selected rows” → paste into Google Sheets/Excel.</span>
+          <span class="small-note">Tip: tick rows → Copy selected rows → paste into Google Sheets/Excel.</span>
         </div>
       </div>
 
@@ -213,17 +319,17 @@ html, body { max-width: 100%; overflow-x: hidden; }
           {% if p == page %}
             <span class="page-pill active">{{ p }}</span>
           {% else %}
-            <a class="page-pill" href="{{ url_for('admin_dashboard', view='candidates', page=p) }}">{{ p }}</a>
+            <a class="page-pill" href="{{ url_for('admin_dashboard', view='candidates', page=p, q=q) }}">{{ p }}</a>
           {% endif %}
         {% endfor %}
         <span class="small-note">Page {{ page }} of {{ total_pages }}</span>
       </div>
 
       <div class="table-wrap">
-        <table class="admin-table" id="adminTable">
+        <table class="admin-table" id="candidatesTable">
           <thead>
             <tr>
-              <th class="col-select"><input type="checkbox" id="masterRowCheck" title="Select all rows on this page"></th>
+              <th class="col-select"><input type="checkbox" id="masterRowCheckC" title="Select all rows on this page"></th>
               <th class="col-date">Date</th>
               <th class="col-name">Name</th>
               <th class="col-email">Email</th>
@@ -238,7 +344,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
           </thead>
           <tbody>
             {% for c in candidates %}
-            <tr class="data-row">
+            <tr class="data-row" data-id="{{ c['id'] }}">
               <td class="col-select"><input type="checkbox" class="row-check"></td>
 
               <td data-col="date">{{ c["created_date"] }}</td>
@@ -278,107 +384,10 @@ html, body { max-width: 100%; overflow-x: hidden; }
           {% if p == page %}
             <span class="page-pill active">{{ p }}</span>
           {% else %}
-            <a class="page-pill" href="{{ url_for('admin_dashboard', view='candidates', page=p) }}">{{ p }}</a>
+            <a class="page-pill" href="{{ url_for('admin_dashboard', view='candidates', page=p, q=q) }}">{{ p }}</a>
           {% endif %}
         {% endfor %}
       </div>
-
-      <script>
-      (function(){
-        const table = document.getElementById('adminTable');
-        const copyBtn = document.getElementById('copyBtn');
-        const statusEl = document.getElementById('copyStatus');
-
-        const masterRowCheck = document.getElementById('masterRowCheck');
-        const selectAllBtn = document.getElementById('selectAllBtn');
-        const clearSelectionBtn = document.getElementById('clearSelectionBtn');
-
-        const colsAllBtn = document.getElementById('colsAllBtn');
-        const colsNoneBtn = document.getElementById('colsNoneBtn');
-        const colChecks = Array.from(document.querySelectorAll('.col-check'));
-
-        function setStatus(msg){
-          statusEl.textContent = msg || '';
-          if(msg){ setTimeout(()=>{ statusEl.textContent=''; }, 2800); }
-        }
-
-        function setAllRowChecks(value){
-          table.querySelectorAll('tbody .row-check').forEach(cb => cb.checked = value);
-          masterRowCheck.checked = value;
-        }
-
-        masterRowCheck.addEventListener('change', () => setAllRowChecks(masterRowCheck.checked));
-        selectAllBtn.addEventListener('click', () => setAllRowChecks(true));
-        clearSelectionBtn.addEventListener('click', () => setAllRowChecks(false));
-
-        colsAllBtn.addEventListener('click', () => colChecks.forEach(ch => ch.checked = true));
-        colsNoneBtn.addEventListener('click', () => colChecks.forEach(ch => ch.checked = false));
-
-        function getSelectedColumns(){
-          return colChecks.filter(ch => ch.checked).map(ch => ch.dataset.col);
-        }
-
-        function escapeCell(text){
-          return String(text ?? '').replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim();
-        }
-
-        async function copyToClipboard(text){
-          if (navigator.clipboard && window.isSecureContext) {
-            await navigator.clipboard.writeText(text);
-            return true;
-          }
-          const ta = document.createElement('textarea');
-          ta.value = text;
-          ta.style.position = 'fixed';
-          ta.style.left = '-9999px';
-          ta.style.top = '-9999px';
-          document.body.appendChild(ta);
-          ta.focus();
-          ta.select();
-          const ok = document.execCommand('copy');
-          document.body.removeChild(ta);
-          return ok;
-        }
-
-        copyBtn.addEventListener('click', async () => {
-          const selectedCols = getSelectedColumns();
-          if (selectedCols.length === 0){ setStatus('Choose at least one column.'); return; }
-
-          const rows = Array.from(table.querySelectorAll('tbody tr.data-row'));
-          const selectedRows = rows.filter(r => r.querySelector('.row-check')?.checked);
-          if (selectedRows.length === 0){ setStatus('Select the rows you want first.'); return; }
-
-          const headerMap = {
-            date: 'Date',
-            name: 'Name',
-            email: 'Email',
-            phone: 'Phone',
-            town: 'Town',
-            trade: 'Primary trade',
-            ticket: 'Primary ticket',
-            additional: 'Additional skills'
-          };
-
-          const lines = [];
-          lines.push(selectedCols.map(c => headerMap[c] || c).join('\t'));
-
-          for (const row of selectedRows){
-            const cells = selectedCols.map(colKey => {
-              const td = row.querySelector(`[data-col="${colKey}"]`);
-              return escapeCell(td ? td.textContent : '');
-            });
-            lines.push(cells.join('\t'));
-          }
-
-          try{
-            const ok = await copyToClipboard(lines.join('\n'));
-            setStatus(ok ? `Copied ${selectedRows.length} row(s) ✓` : 'Copy failed.');
-          } catch(e){
-            setStatus('Copy failed.');
-          }
-        });
-      })();
-      </script>
 
     {% endif %}
 
@@ -386,50 +395,102 @@ html, body { max-width: 100%; overflow-x: hidden; }
     {% if view == 'starters' %}
       <h2 style="margin: 0 0 6px;">New Starters</h2>
 
+      <!-- Copy + Delete for starters -->
+      <div class="copy-toolbar">
+        <div class="row">
+          <button class="btn" id="copyBtnS" type="button">Copy selected rows</button>
+          <button class="btn danger" id="deleteBtnS" type="button">Delete candidate(s)</button>
+          <span class="small-note" id="copyStatusS"></span>
+        </div>
+
+        <div class="row">
+          <span class="small-note" style="margin-right:4px;">Columns to copy:</span>
+          <label><input type="checkbox" class="col-check-s" data-col="name" checked> Name</label>
+          <label><input type="checkbox" class="col-check-s" data-col="phone" checked> Phone</label>
+          <label><input type="checkbox" class="col-check-s" data-col="email"> Email</label>
+          <label><input type="checkbox" class="col-check-s" data-col="town"> Town</label>
+          <label><input type="checkbox" class="col-check-s" data-col="trade" checked> Position</label>
+          <label><input type="checkbox" class="col-check-s" data-col="ticket"> Tickets</label>
+          <label><input type="checkbox" class="col-check-s" data-col="utr"> UTR</label>
+          <label><input type="checkbox" class="col-check-s" data-col="ni"> NI</label>
+          <label><input type="checkbox" class="col-check-s" data-col="sort"> Sort code</label>
+          <label><input type="checkbox" class="col-check-s" data-col="acc"> Account</label>
+          <label><input type="checkbox" class="col-check-s" data-col="client"> Client</label>
+          <label><input type="checkbox" class="col-check-s" data-col="start"> Start date</label>
+          <label><input type="checkbox" class="col-check-s" data-col="postcode"> Job postcode</label>
+          <label><input type="checkbox" class="col-check-s" data-col="pay"> Pay rate</label>
+        </div>
+
+        <div class="row">
+          <span class="small-note">Tip: tick rows → Copy selected rows → paste into Google Sheets/Excel.</span>
+        </div>
+      </div>
+
       <div class="pagination">
         {% for p in range(1, total_pages + 1) %}
           {% if p == page %}
             <span class="page-pill active">{{ p }}</span>
           {% else %}
-            <a class="page-pill" href="{{ url_for('admin_dashboard', view='starters', page=p) }}">{{ p }}</a>
+            <a class="page-pill" href="{{ url_for('admin_dashboard', view='starters', page=p, q=q) }}">{{ p }}</a>
           {% endif %}
         {% endfor %}
         <span class="small-note">Page {{ page }} of {{ total_pages }}</span>
       </div>
 
       <div class="table-wrap">
-        <table class="admin-table">
+        <table class="admin-table" id="startersTable">
           <thead>
             <tr>
+              <th class="col-select"><input type="checkbox" id="masterRowCheckS" title="Select all rows on this page"></th>
+              <th class="col-toggle"></th>
               <th class="col-date">Date</th>
               <th class="col-name">Name</th>
               <th class="col-email">Email</th>
               <th class="col-phone">Phone</th>
               <th class="col-town">Town</th>
-              <th class="col-trade">Trade</th>
+              <th class="col-trade">Position</th>
               <th class="col-ticket">Tickets</th>
-              <th style="width:120px;">UTR</th>
-              <th style="width:160px;">NI Number</th>
-              <th style="width:120px;">Sort Code</th>
-              <th style="width:140px;">Account No.</th>
-              <th style="width:120px;">ID Doc</th>
-              <th style="width:170px;">Files</th>
+              <th style="width:90px;">UTR</th>
+              <th class="col-ni">NI</th>
+              <th class="col-sort">Sort</th>
+              <th class="col-acc">Account</th>
+              <th class="col-id">ID</th>
+              <th class="col-files">Tickets</th>
             </tr>
           </thead>
           <tbody>
             {% for s in starters %}
-            <tr>
-              <td>{{ s["created_date"] }}</td>
-              <td>{{ s["first_name"] }} {{ s["last_name"] }}</td>
-              <td>{{ s["email"] }}</td>
-              <td>{{ s["phone"] }}</td>
-              <td>{{ s["town"] }}</td>
-              <td>{{ s["primary_trade"] }}</td>
-              <td>{{ s["primary_ticket"] }}</td>
-              <td>{{ s["utr"] or "—" }}</td>
-              <td>{{ s["national_insurance"] }}</td>
-              <td>{{ s["sort_code"] }}</td>
-              <td>{{ s["account_number"] }}</td>
+            <tr class="starter-row" data-id="{{ s['id'] }}"
+                data-name="{{ s['first_name'] }} {{ s['last_name'] }}"
+                data-phone="{{ s['phone'] }}"
+                data-email="{{ s['email'] }}"
+                data-town="{{ s['town'] }}"
+                data-trade="{{ s['primary_trade'] }}"
+                data-ticket="{{ s['primary_ticket'] }}"
+                data-utr="{{ s['utr'] or '' }}"
+                data-ni="{{ s['national_insurance'] }}"
+                data-sort="{{ s['sort_code'] }}"
+                data-acc="{{ s['account_number'] }}"
+                data-client="{{ s['client_name'] or '' }}"
+                data-start="{{ s['start_date'] or '' }}"
+                data-postcode="{{ s['job_postcode'] or '' }}"
+                data-pay="{{ s['pay_rate'] or '' }}"
+            >
+              <td class="col-select"><input type="checkbox" class="row-check"></td>
+              <td class="col-toggle"><button class="toggle-btn" type="button" title="Open details">›</button></td>
+
+              <td data-col="date">{{ s["created_date"] }}</td>
+              <td data-col="name">{{ s["first_name"] }} {{ s["last_name"] }}</td>
+              <td data-col="email">{{ s["email"] }}</td>
+              <td data-col="phone">{{ s["phone"] }}</td>
+              <td data-col="town">{{ s["town"] }}</td>
+              <td data-col="trade">{{ s["primary_trade"] }}</td>
+              <td data-col="ticket">{{ s["primary_ticket"] }}</td>
+              <td data-col="utr">{{ s["utr"] or "—" }}</td>
+              <td data-col="ni">{{ s["national_insurance"] }}</td>
+              <td data-col="sort">{{ s["sort_code"] }}</td>
+              <td data-col="acc">{{ s["account_number"] }}</td>
+
               <td>
                 {% if s["id_document_filename"] %}
                   <a class="table-link" href="{{ url_for('admin_download', filename=s['id_document_filename']) }}">Download</a>
@@ -437,6 +498,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
                   —
                 {% endif %}
               </td>
+
               <td>
                 {% if s["tickets_files"] and s["tickets_files"]|length > 0 %}
                   {% for f in s["tickets_files"] %}
@@ -447,6 +509,51 @@ html, body { max-width: 100%; overflow-x: hidden; }
                 {% endif %}
               </td>
             </tr>
+
+            <!-- hidden expandable area row -->
+            <tr class="expand-row" data-expand-for="{{ s['id'] }}" style="display:none;">
+              <td colspan="15">
+                <div class="expand-panel">
+
+                  <div class="panel-grid">
+                    <div class="pfield">
+                      <label>Client name</label>
+                      <input type="text" class="note-client" value="{{ s['client_name'] or '' }}" placeholder="Client name">
+                    </div>
+                    <div class="pfield">
+                      <label>Start date</label>
+                      <input type="text" class="note-start" value="{{ s['start_date'] or '' }}" placeholder="e.g. 09.03">
+                    </div>
+                    <div class="pfield">
+                      <label>Job postcode</label>
+                      <input type="text" class="note-postcode" value="{{ s['job_postcode'] or '' }}" placeholder="e.g. DE24">
+                    </div>
+                    <div class="pfield">
+                      <label>Pay rate</label>
+                      <input type="text" class="note-pay" value="{{ s['pay_rate'] or '' }}" placeholder="e.g. £20ph">
+                    </div>
+                  </div>
+
+                  <div class="panel-actions">
+                    <button class="btn secondary save-notes" type="button">Save</button>
+                    <span class="small-note save-status"></span>
+                  </div>
+
+                  <div class="two-cols">
+                    <div class="box">
+                      <h4>For checking</h4>
+                      <textarea class="for-checking" readonly></textarea>
+                    </div>
+                    <div class="box">
+                      <h4>For payroll</h4>
+                      <textarea class="for-payroll" readonly></textarea>
+                    </div>
+                  </div>
+
+                </div>
+              </td>
+            </tr>
+
             {% endfor %}
           </tbody>
         </table>
@@ -457,13 +564,349 @@ html, body { max-width: 100%; overflow-x: hidden; }
           {% if p == page %}
             <span class="page-pill active">{{ p }}</span>
           {% else %}
-            <a class="page-pill" href="{{ url_for('admin_dashboard', view='starters', page=p) }}">{{ p }}</a>
+            <a class="page-pill" href="{{ url_for('admin_dashboard', view='starters', page=p, q=q) }}">{{ p }}</a>
           {% endif %}
         {% endfor %}
       </div>
     {% endif %}
 
+    <!-- Delete form (hidden) -->
+    <form id="deleteForm" method="POST" action="{{ url_for('admin_delete') }}" style="display:none;">
+      <input type="hidden" name="view" id="delView" value="{{ view }}">
+      <input type="hidden" name="ids" id="delIds" value="">
+      <input type="hidden" name="q" value="{{ q }}">
+      <input type="hidden" name="page" value="{{ page }}">
+    </form>
+
   </div>
 </div>
+
+<script>
+(function(){
+  // ---------- Font size control (A- / A+) ----------
+  const key = "admin_font_size";
+  const root = document.documentElement;
+  const minus = document.getElementById("fontMinus");
+  const plus = document.getElementById("fontPlus");
+
+  function applyFontSize(px){
+    root.style.setProperty("--admin-font", px + "px");
+    localStorage.setItem(key, String(px));
+  }
+
+  const saved = parseInt(localStorage.getItem(key) || "13", 10);
+  if(!isNaN(saved)) applyFontSize(Math.min(18, Math.max(12, saved)));
+
+  if(minus) minus.addEventListener("click", () => {
+    const cur = parseInt(getComputedStyle(root).getPropertyValue("--admin-font")) || 13;
+    applyFontSize(Math.max(12, cur - 1));
+  });
+  if(plus) plus.addEventListener("click", () => {
+    const cur = parseInt(getComputedStyle(root).getPropertyValue("--admin-font")) || 13;
+    applyFontSize(Math.min(18, cur + 1));
+  });
+
+  // ---------- Helpers ----------
+  function escapeCell(text){
+    return String(text ?? '').replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+  async function copyToClipboard(text){
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    ta.style.top = '-9999px';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return ok;
+  }
+
+  function getSelectedIds(table){
+    const rows = Array.from(table.querySelectorAll('tbody tr.data-row, tbody tr.starter-row'));
+    const selected = rows.filter(r => r.querySelector('.row-check')?.checked);
+    return selected.map(r => r.getAttribute("data-id")).filter(Boolean);
+  }
+
+  // ---------- Delete ----------
+  function setupDelete(btnId, tableId, viewValue){
+    const btn = document.getElementById(btnId);
+    const table = document.getElementById(tableId);
+    const form = document.getElementById("deleteForm");
+    if(!btn || !table || !form) return;
+
+    btn.addEventListener("click", () => {
+      const ids = getSelectedIds(table);
+      if(ids.length === 0){
+        alert("Select at least one person first.");
+        return;
+      }
+      const ok = confirm(`Delete ${ids.length} record(s)? This cannot be undone.`);
+      if(!ok) return;
+
+      document.getElementById("delView").value = viewValue;
+      document.getElementById("delIds").value = ids.join(",");
+      form.submit();
+    });
+  }
+
+  // ---------- Master checkbox ----------
+  function setupMaster(masterId, tableId){
+    const master = document.getElementById(masterId);
+    const table = document.getElementById(tableId);
+    if(!master || !table) return;
+
+    master.addEventListener("change", () => {
+      table.querySelectorAll('tbody .row-check').forEach(cb => cb.checked = master.checked);
+    });
+  }
+
+  // ---------- Copy (Candidates) ----------
+  function setupCopyCandidates(){
+    const table = document.getElementById("candidatesTable");
+    const copyBtn = document.getElementById("copyBtn");
+    const statusEl = document.getElementById("copyStatus");
+    if(!table || !copyBtn) return;
+
+    const colChecks = Array.from(document.querySelectorAll('.col-check'));
+
+    function setStatus(msg){
+      if(!statusEl) return;
+      statusEl.textContent = msg || '';
+      if(msg){ setTimeout(()=>{ statusEl.textContent=''; }, 2800); }
+    }
+
+    copyBtn.addEventListener("click", async () => {
+      const selectedCols = colChecks.filter(ch => ch.checked).map(ch => ch.dataset.col);
+      if(selectedCols.length === 0){ setStatus("Choose at least one column."); return; }
+
+      const rows = Array.from(table.querySelectorAll('tbody tr.data-row'));
+      const selectedRows = rows.filter(r => r.querySelector('.row-check')?.checked);
+      if(selectedRows.length === 0){ setStatus("Select rows first."); return; }
+
+      const headerMap = {
+        date: 'Date', name: 'Name', email: 'Email', phone: 'Phone', town: 'Town',
+        trade: 'Primary trade', ticket: 'Primary ticket', additional: 'Additional skills'
+      };
+
+      const lines = [];
+      lines.push(selectedCols.map(c => headerMap[c] || c).join('\t'));
+
+      for(const row of selectedRows){
+        const cells = selectedCols.map(colKey => {
+          const td = row.querySelector(`[data-col="${colKey}"]`);
+          return escapeCell(td ? td.textContent : '');
+        });
+        lines.push(cells.join('\t'));
+      }
+
+      try{
+        const ok = await copyToClipboard(lines.join('\n'));
+        setStatus(ok ? `Copied ${selectedRows.length} row(s) ✓` : "Copy failed.");
+      }catch(e){
+        setStatus("Copy failed.");
+      }
+    });
+  }
+
+  // ---------- Copy (Starters) ----------
+  function setupCopyStarters(){
+    const table = document.getElementById("startersTable");
+    const copyBtn = document.getElementById("copyBtnS");
+    const statusEl = document.getElementById("copyStatusS");
+    if(!table || !copyBtn) return;
+
+    const colChecks = Array.from(document.querySelectorAll('.col-check-s'));
+
+    function setStatus(msg){
+      if(!statusEl) return;
+      statusEl.textContent = msg || '';
+      if(msg){ setTimeout(()=>{ statusEl.textContent=''; }, 2800); }
+    }
+
+    copyBtn.addEventListener("click", async () => {
+      const selectedCols = colChecks.filter(ch => ch.checked).map(ch => ch.dataset.col);
+      if(selectedCols.length === 0){ setStatus("Choose at least one column."); return; }
+
+      const rows = Array.from(table.querySelectorAll('tbody tr.starter-row'));
+      const selectedRows = rows.filter(r => r.querySelector('.row-check')?.checked);
+      if(selectedRows.length === 0){ setStatus("Select rows first."); return; }
+
+      const headerMap = {
+        date: 'Date', name: 'Name', email: 'Email', phone: 'Phone', town: 'Town',
+        trade: 'Position', ticket: 'Tickets', utr: 'UTR', ni: 'NI',
+        sort: 'Sort code', acc: 'Account', client: 'Client',
+        start: 'Start date', postcode: 'Job postcode', pay: 'Pay rate'
+      };
+
+      const lines = [];
+      lines.push(selectedCols.map(c => headerMap[c] || c).join('\t'));
+
+      for(const row of selectedRows){
+        const cells = selectedCols.map(colKey => {
+          const td = row.querySelector(`[data-col="${colKey}"]`);
+          // Some of those are stored as data attributes / extra fields (client/start/postcode/pay)
+          if(td) return escapeCell(td.textContent);
+          if(colKey === "client") return escapeCell(row.dataset.client);
+          if(colKey === "start") return escapeCell(row.dataset.start);
+          if(colKey === "postcode") return escapeCell(row.dataset.postcode);
+          if(colKey === "pay") return escapeCell(row.dataset.pay);
+          return "";
+        });
+        lines.push(cells.join('\t'));
+      }
+
+      try{
+        const ok = await copyToClipboard(lines.join('\n'));
+        setStatus(ok ? `Copied ${selectedRows.length} row(s) ✓` : "Copy failed.");
+      }catch(e){
+        setStatus("Copy failed.");
+      }
+    });
+  }
+
+  // ---------- Expand rows + save notes + build texts ----------
+  function setupStarterExpand(){
+    const table = document.getElementById("startersTable");
+    if(!table) return;
+
+    function buildTexts(rowEl, panelEl){
+      const name = rowEl.dataset.name || "";
+      const phone = rowEl.dataset.phone || "";
+      const email = rowEl.dataset.email || "";
+      const town = rowEl.dataset.town || "";
+      const trade = rowEl.dataset.trade || "";
+      const utr = rowEl.dataset.utr || "";
+      const ni = rowEl.dataset.ni || "";
+      const sort = rowEl.dataset.sort || "";
+      const acc = rowEl.dataset.acc || "";
+
+      const client = (panelEl.querySelector(".note-client")?.value || "").trim();
+      const start = (panelEl.querySelector(".note-start")?.value || "").trim();
+      const postcode = (panelEl.querySelector(".note-postcode")?.value || "").trim();
+      const pay = (panelEl.querySelector(".note-pay")?.value || "").trim();
+
+      // For checking (as you specified)
+      const checking =
+`${name}
+${start}
+${pay}
+${trade}
+${postcode}
+${client}
+${phone}`.trim();
+
+      // For payroll (as you specified)
+      const payroll =
+`Full name - ${name}
+Number - ${phone}
+Email - ${email}
+${town}
+Utr , ${utr}
+Ni, ${ni}
+Sort code ${sort}
+Account number ${acc}`.trim();
+
+      panelEl.querySelector(".for-checking").value = checking;
+      panelEl.querySelector(".for-payroll").value = payroll;
+    }
+
+    table.querySelectorAll("tbody tr.starter-row").forEach(row => {
+      const id = row.getAttribute("data-id");
+      const toggleBtn = row.querySelector(".toggle-btn");
+      const expandRow = table.querySelector(`tr.expand-row[data-expand-for="${id}"]`);
+      if(!toggleBtn || !expandRow) return;
+
+      const panel = expandRow.querySelector(".expand-panel");
+      const saveBtn = expandRow.querySelector(".save-notes");
+      const status = expandRow.querySelector(".save-status");
+
+      const inputs = [
+        expandRow.querySelector(".note-client"),
+        expandRow.querySelector(".note-start"),
+        expandRow.querySelector(".note-postcode"),
+        expandRow.querySelector(".note-pay")
+      ].filter(Boolean);
+
+      function setStatus(msg){
+        if(!status) return;
+        status.textContent = msg || "";
+        if(msg) setTimeout(()=> status.textContent="", 2000);
+      }
+
+      // build initial texts
+      buildTexts(row, expandRow);
+
+      // live update texts while typing (does not auto-save)
+      inputs.forEach(inp => inp.addEventListener("input", () => buildTexts(row, expandRow)));
+
+      toggleBtn.addEventListener("click", () => {
+        const isOpen = expandRow.style.display !== "none";
+        // close all others
+        table.querySelectorAll("tr.expand-row").forEach(r => r.style.display = "none");
+        table.querySelectorAll(".toggle-btn").forEach(b => b.textContent = "›");
+        if(isOpen){
+          expandRow.style.display = "none";
+          toggleBtn.textContent = "›";
+        }else{
+          expandRow.style.display = "";
+          toggleBtn.textContent = "⌄";
+          buildTexts(row, expandRow);
+        }
+      });
+
+      saveBtn.addEventListener("click", async () => {
+        const payload = {
+          client_name: inputs[0]?.value || "",
+          start_date: inputs[1]?.value || "",
+          job_postcode: inputs[2]?.value || "",
+          pay_rate: inputs[3]?.value || ""
+        };
+
+        try{
+          const res = await fetch(`/admin/starter-notes/${id}`, {
+            method: "POST",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify(payload)
+          });
+          const js = await res.json();
+          if(js && js.ok){
+            // update row dataset (so copy/export uses latest)
+            row.dataset.client = payload.client_name;
+            row.dataset.start = payload.start_date;
+            row.dataset.postcode = payload.job_postcode;
+            row.dataset.pay = payload.pay_rate;
+
+            setStatus("Saved ✓");
+          }else{
+            setStatus("Save failed");
+          }
+        }catch(e){
+          setStatus("Save failed");
+        }
+      });
+    });
+  }
+
+  // init based on which view exists
+  setupMaster("masterRowCheckC", "candidatesTable");
+  setupMaster("masterRowCheckS", "startersTable");
+
+  setupCopyCandidates();
+  setupCopyStarters();
+
+  setupDelete("deleteBtn", "candidatesTable", "candidates");
+  setupDelete("deleteBtnS", "startersTable", "starters");
+
+  setupStarterExpand();
+})();
+</script>
 
 {% endblock %}
