@@ -376,7 +376,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
               <td>
                 {% if c["tickets_files"] and c["tickets_files"]|length > 0 %}
                   {% for f in c["tickets_files"] %}
-                    <a class="table-link" href="{{ url_for('admin_download', filename=f) }}">Ticket {{ loop.index }} - {{ c["first_name"] }} {{ c["last_name"] }}</a>{% if not loop.last %}<br>{% endif %}
+                    <a class="table-link" href="{{ url_for('admin_download', filename=f) }}">Ticket {{ loop.index }}</a>{% if not loop.last %}<br>{% endif %}
                   {% endfor %}
                 {% else %}
                   —
@@ -923,3 +923,4 @@ Account number ${acc}${shareLine}`.trim();
 </script>
 
 {% endblock %}
+
