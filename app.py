@@ -40,7 +40,7 @@ def db_connect():
 def ensure_column(conn, table, column, coltype):
     c = conn.cursor()
     c.execute(f"PRAGMA table_info({table})")
-    existing = {row[1] for row in c.fetchall()}  # row[1] is column name in PRAGMA table_info
+    existing = {row[1] for row in c.fetchall()}
     if column not in existing:
         c.execute(f"ALTER TABLE {table} ADD COLUMN {column} {coltype}")
         conn.commit()
@@ -95,26 +95,26 @@ def init_db():
             primary_trade TEXT,
             primary_ticket TEXT,
             utr TEXT,
+            sharecode TEXT,
             national_insurance TEXT,
             sort_code TEXT,
             account_number TEXT,
             id_document_filename TEXT,
             tickets_filename TEXT,
-            created_date TEXT
+            created_date TEXT,
+            client_name TEXT,
+            start_date TEXT,
+            job_postcode TEXT,
+            pay_rate TEXT
         )
     """)
 
     conn.commit()
 
-    # ensure columns exist (safe to run repeatedly)
     ensure_column(conn, "registrations", "created_date", "TEXT")
     ensure_column(conn, "contact_requests", "created_date", "TEXT")
     ensure_column(conn, "new_starters", "tickets_filename", "TEXT")
-
-    # ✅ NEW: Share code for new starters
-    ensure_column(conn, "new_starters", "share_code", "TEXT")
-
-    # (optional future columns for starter notes - if you already added these elsewhere, keep them)
+    ensure_column(conn, "new_starters", "sharecode", "TEXT")
     ensure_column(conn, "new_starters", "client_name", "TEXT")
     ensure_column(conn, "new_starters", "start_date", "TEXT")
     ensure_column(conn, "new_starters", "job_postcode", "TEXT")
@@ -207,7 +207,7 @@ def contact():
             INSERT INTO contact_requests
             (name,email,phone,company,message,created_at,created_date,consent,consent_at)
             VALUES (?,?,?,?,?,?,?,?,?)
-        """, (name, email, phone, company, message, now_ts, now_date, consent, now_ts))
+        """,(name,email,phone,company,message,now_ts,now_date,consent,now_ts))
 
         conn.commit()
         conn.close()
@@ -217,7 +217,7 @@ def contact():
     return render_template("contact.html", error=error)
 
 
-@app.route("/register", methods=["GET", "POST"])
+@app.route("/register", methods=["GET","POST"])
 def register():
     error = None
 
@@ -229,7 +229,7 @@ def register():
         town = request.form["town"]
         primary_trade = request.form["primary_trade"]
         primary_ticket = request.form["primary_ticket"]
-        additional_info = request.form.get("additional_info", "")
+        additional_info = request.form.get("additional_info","")
 
         consent = 1 if request.form.get("consent") == "on" else 0
         if consent != 1:
@@ -242,7 +242,6 @@ def register():
         if cv_file and cv_file.filename:
             if not allowed_file(cv_file.filename):
                 return render_template("register.html", error="Invalid CV file type.")
-
             safe = secure_filename(cv_file.filename)
             cv_filename = f"{first_name}_{last_name}_CV_{safe}"
             cv_file.save(os.path.join(UPLOAD_FOLDER, cv_filename))
@@ -254,7 +253,6 @@ def register():
         for idx, f in enumerate(ticket_files, start=1):
             if not allowed_file(f.filename):
                 return render_template("register.html", error="Invalid ticket file type.")
-
             safe = secure_filename(f.filename)
             filename = f"{first_name}_{last_name}_TICKET{idx}_{safe}"
             f.save(os.path.join(UPLOAD_FOLDER, filename))
@@ -274,8 +272,8 @@ def register():
             (first_name,last_name,email,phone,town,primary_trade,primary_ticket,
              additional_info,cv_filename,tickets_filename,consent,consent_at,created_date)
             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
-        """, (first_name, last_name, email, phone, town, primary_trade, primary_ticket,
-              additional_info, cv_filename, tickets_filename, consent, now_ts, now_date))
+        """,(first_name,last_name,email,phone,town,primary_trade,primary_ticket,
+             additional_info,cv_filename,tickets_filename,consent,now_ts,now_date))
 
         conn.commit()
         conn.close()
@@ -285,7 +283,7 @@ def register():
     return render_template("register.html", error=error)
 
 
-@app.route("/candidateRegister", methods=["GET", "POST"])
+@app.route("/candidateRegister", methods=["GET","POST"])
 def candidate_register():
     if request.method == "POST":
         first_name = request.form["first_name"]
@@ -293,40 +291,36 @@ def candidate_register():
         email = request.form["email"]
         phone = request.form["phone"]
         town = request.form["town"]
-        primary_trade = request.form["primary_trade"]     # Position you're starting
+        primary_trade = request.form["primary_trade"]
         primary_ticket = request.form["primary_ticket"]
 
-        utr = request.form.get("utr", "")
+        utr = request.form.get("utr","").strip()
+        sharecode = request.form.get("sharecode","").strip()
+
         national_insurance = request.form["national_insurance"]
         sort_code = request.form["sort_code"]
         account_number = request.form["account_number"]
 
-        # ✅ NEW: Share code optional
-        share_code = request.form.get("share_code", "").strip()
+        consent = 1 if request.form.get("consent") == "on" else 0
+        if consent != 1:
+            return render_template("candidate_register.html", error="Please confirm you have read the Privacy Policy and agree to the processing of your details.")
 
         id_doc = request.files.get("id_document")
         if not id_doc or not id_doc.filename:
             return render_template("candidate_register.html", error="Upload passport or birth certificate.")
-
-        # allow only jpg/jpeg/png/pdf for ID document (pdf not in allowed_file)
-        id_ext = (id_doc.filename.rsplit(".", 1)[1].lower() if "." in id_doc.filename else "")
-        if id_ext not in {"jpg", "jpeg", "png", "pdf"}:
-            return render_template("candidate_register.html", error="Invalid ID document type. Use JPG, PNG or PDF.")
 
         safe = secure_filename(id_doc.filename)
         now_stamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
         id_document_filename = f"{first_name}_{last_name}_ID_{now_stamp}_{safe}"
         id_doc.save(os.path.join(UPLOAD_FOLDER, id_document_filename))
 
-        # optional ticket files (up to 5)
         ticket_files = request.files.getlist("tickets")
         ticket_files = [f for f in ticket_files if f and f.filename]
 
         saved = []
         for idx, f in enumerate(ticket_files, start=1):
             if not allowed_file(f.filename):
-                return render_template("candidate_register.html", error="Invalid ticket file. Use PDF, DOC, DOCX, JPG or PNG.")
-
+                return render_template("candidate_register.html", error="Invalid ticket file.")
             safe_ticket = secure_filename(f.filename)
             filename = f"{first_name}_{last_name}_STARTER_TICKET{idx}_{now_stamp}_{safe_ticket}"
             f.save(os.path.join(UPLOAD_FOLDER, filename))
@@ -338,16 +332,15 @@ def candidate_register():
         conn = sqlite3.connect(DB_NAME)
         c = conn.cursor()
 
-        # ✅ NEW: share_code inserted
         c.execute("""
             INSERT INTO new_starters
             (first_name,last_name,email,phone,town,primary_trade,primary_ticket,
-             utr,national_insurance,sort_code,account_number,
-             id_document_filename,tickets_filename,share_code,created_date)
+             utr,sharecode,national_insurance,sort_code,account_number,
+             id_document_filename,tickets_filename,created_date)
             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-        """, (first_name, last_name, email, phone, town, primary_trade, primary_ticket,
-              utr, national_insurance, sort_code, account_number,
-              id_document_filename, tickets_filename, share_code, created_date))
+        """,(first_name,last_name,email,phone,town,primary_trade,primary_ticket,
+             utr,sharecode,national_insurance,sort_code,account_number,
+             id_document_filename,tickets_filename,created_date))
 
         conn.commit()
         conn.close()
@@ -368,7 +361,28 @@ def admin_download(filename):
     return send_from_directory(UPLOAD_FOLDER, filename, as_attachment=True)
 
 
-# ========================= ADMIN DASHBOARD =========================
+@app.route("/admin/starter-notes/<int:starter_id>", methods=["POST"])
+@admin_required
+def starter_notes(starter_id):
+    data = request.get_json(force=True) or {}
+    client_name = (data.get("client_name") or "").strip()
+    start_date = (data.get("start_date") or "").strip()      # YYYY-MM-DD from date picker
+    job_postcode = (data.get("job_postcode") or "").strip()
+    pay_rate = (data.get("pay_rate") or "").strip()
+
+    conn = db_connect()
+    c = conn.cursor()
+    c.execute("""
+        UPDATE new_starters
+        SET client_name=?, start_date=?, job_postcode=?, pay_rate=?
+        WHERE id=?
+    """,(client_name, start_date, job_postcode, pay_rate, starter_id))
+    conn.commit()
+    conn.close()
+
+    return jsonify({"ok": True})
+
+
 @app.route("/admin")
 @admin_required
 def admin_dashboard():
@@ -381,174 +395,71 @@ def admin_dashboard():
     c = conn.cursor()
 
     if view == "starters":
-        # count
+        where = ""
+        params = []
         if q:
+            where = """
+              WHERE first_name LIKE ? OR last_name LIKE ? OR email LIKE ? OR phone LIKE ?
+                 OR town LIKE ? OR primary_trade LIKE ? OR primary_ticket LIKE ?
+                 OR utr LIKE ? OR national_insurance LIKE ? OR sort_code LIKE ?
+                 OR account_number LIKE ? OR sharecode LIKE ?
+            """
             like = f"%{q}%"
-            c.execute("""
-                SELECT COUNT(*) AS cnt
-                FROM new_starters
-                WHERE
-                  first_name LIKE ? OR last_name LIKE ? OR email LIKE ? OR phone LIKE ? OR town LIKE ?
-                  OR primary_trade LIKE ? OR primary_ticket LIKE ?
-                  OR utr LIKE ? OR national_insurance LIKE ? OR sort_code LIKE ? OR account_number LIKE ?
-                  OR COALESCE(client_name,'') LIKE ? OR COALESCE(start_date,'') LIKE ? OR COALESCE(job_postcode,'') LIKE ? OR COALESCE(pay_rate,'') LIKE ?
-                  OR COALESCE(share_code,'') LIKE ?
-            """, (like, like, like, like, like,
-                  like, like, like, like, like, like,
-                  like, like, like, like, like))
-        else:
-            c.execute("SELECT COUNT(*) AS cnt FROM new_starters")
+            params = [like]*12
 
+        c.execute(f"SELECT COUNT(*) AS cnt FROM new_starters {where}", params)
         total = c.fetchone()["cnt"]
         total_pages = max(1, math.ceil(total / per_page))
         offset = (page - 1) * per_page
 
-        if q:
-            like = f"%{q}%"
-            c.execute("""
-                SELECT *
-                FROM new_starters
-                WHERE
-                  first_name LIKE ? OR last_name LIKE ? OR email LIKE ? OR phone LIKE ? OR town LIKE ?
-                  OR primary_trade LIKE ? OR primary_ticket LIKE ?
-                  OR utr LIKE ? OR national_insurance LIKE ? OR sort_code LIKE ? OR account_number LIKE ?
-                  OR COALESCE(client_name,'') LIKE ? OR COALESCE(start_date,'') LIKE ? OR COALESCE(job_postcode,'') LIKE ? OR COALESCE(pay_rate,'') LIKE ?
-                  OR COALESCE(share_code,'') LIKE ?
-                ORDER BY id DESC
-                LIMIT ? OFFSET ?
-            """, (like, like, like, like, like,
-                  like, like, like, like, like, like,
-                  like, like, like, like, like, per_page, offset))
-        else:
-            c.execute("SELECT * FROM new_starters ORDER BY id DESC LIMIT ? OFFSET ?", (per_page, offset))
-
+        c.execute(f"SELECT * FROM new_starters {where} ORDER BY id DESC LIMIT ? OFFSET ?", params + [per_page, offset])
         rows = c.fetchall()
+        starters = [dict(r) for r in rows]
+
+        # split tickets
+        for s in starters:
+            raw = s.get("tickets_filename") or ""
+            s["tickets_files"] = [x for x in raw.split("|") if x] if raw else []
+
         conn.close()
+        return render_template("admin.html", view="starters", starters=starters, candidates=[],
+                               page=page, total_pages=total_pages, q=q)
 
-        starters = []
-        for r in rows:
-            d = dict(r)
-            tf = d.get("tickets_filename") or ""
-            d["tickets_files"] = [x for x in tf.split("|") if x] if tf else []
-            starters.append(d)
-
-        return render_template(
-            "admin.html",
-            view="starters",
-            q=q,
-            page=page,
-            total_pages=total_pages,
-            starters=starters,
-            candidates=[]
-        )
-
-    # default: candidates view
+    # candidates view
+    where = ""
+    params = []
     if q:
+        where = """
+          WHERE first_name LIKE ? OR last_name LIKE ? OR email LIKE ? OR phone LIKE ?
+             OR town LIKE ? OR primary_trade LIKE ? OR primary_ticket LIKE ?
+             OR additional_info LIKE ? OR tickets_filename LIKE ?
+        """
         like = f"%{q}%"
-        c.execute("""
-            SELECT COUNT(*) AS cnt
-            FROM registrations
-            WHERE
-              first_name LIKE ? OR last_name LIKE ? OR email LIKE ? OR phone LIKE ? OR town LIKE ?
-              OR primary_trade LIKE ? OR primary_ticket LIKE ? OR COALESCE(additional_info,'') LIKE ?
-              OR COALESCE(tickets_filename,'') LIKE ?
-        """, (like, like, like, like, like, like, like, like, like))
-    else:
-        c.execute("SELECT COUNT(*) AS cnt FROM registrations")
+        params = [like]*9
 
+    c.execute(f"SELECT COUNT(*) AS cnt FROM registrations {where}", params)
     total = c.fetchone()["cnt"]
     total_pages = max(1, math.ceil(total / per_page))
     offset = (page - 1) * per_page
 
-    if q:
-        like = f"%{q}%"
-        c.execute("""
-            SELECT *
-            FROM registrations
-            WHERE
-              first_name LIKE ? OR last_name LIKE ? OR email LIKE ? OR phone LIKE ? OR town LIKE ?
-              OR primary_trade LIKE ? OR primary_ticket LIKE ? OR COALESCE(additional_info,'') LIKE ?
-              OR COALESCE(tickets_filename,'') LIKE ?
-            ORDER BY id DESC
-            LIMIT ? OFFSET ?
-        """, (like, like, like, like, like, like, like, like, like, per_page, offset))
-    else:
-        c.execute("SELECT * FROM registrations ORDER BY id DESC LIMIT ? OFFSET ?", (per_page, offset))
-
+    c.execute(f"SELECT * FROM registrations {where} ORDER BY id DESC LIMIT ? OFFSET ?", params + [per_page, offset])
     rows = c.fetchall()
+    candidates = [dict(r) for r in rows]
+
+    for cand in candidates:
+        raw = cand.get("tickets_filename") or ""
+        cand["tickets_files"] = [x for x in raw.split("|") if x] if raw else []
+
     conn.close()
 
-    candidates = []
-    for r in rows:
-        d = dict(r)
-        tf = d.get("tickets_filename") or ""
-        d["tickets_files"] = [x for x in tf.split("|") if x] if tf else []
-        candidates.append(d)
-
-    return render_template(
-        "admin.html",
+    return render_template("admin.html",
         view="candidates",
-        q=q,
+        candidates=candidates,
+        starters=[],
         page=page,
         total_pages=total_pages,
-        candidates=candidates,
-        starters=[]
+        q=q
     )
-
-
-# Save starter notes (client/start/postcode/pay) from expand panel
-@app.route("/admin/starter-notes/<int:starter_id>", methods=["POST"])
-@admin_required
-def admin_starter_notes(starter_id):
-    data = request.get_json(force=True) or {}
-    client_name = (data.get("client_name") or "").strip()
-    start_date = (data.get("start_date") or "").strip()
-    job_postcode = (data.get("job_postcode") or "").strip()
-    pay_rate = (data.get("pay_rate") or "").strip()
-
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute("""
-        UPDATE new_starters
-        SET client_name = ?, start_date = ?, job_postcode = ?, pay_rate = ?
-        WHERE id = ?
-    """, (client_name, start_date, job_postcode, pay_rate, starter_id))
-    conn.commit()
-    conn.close()
-
-    return jsonify({"ok": True})
-
-
-# Delete candidates / starters
-@app.route("/admin/delete", methods=["POST"])
-@admin_required
-def admin_delete():
-    view = request.form.get("view", "candidates")
-    ids = (request.form.get("ids") or "").strip()
-    q = request.form.get("q", "")
-    page = request.form.get("page", "1")
-
-    if not ids:
-        return redirect(url_for("admin_dashboard", view=view, q=q, page=page))
-
-    id_list = [int(x) for x in ids.split(",") if x.strip().isdigit()]
-    if not id_list:
-        return redirect(url_for("admin_dashboard", view=view, q=q, page=page))
-
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-
-    if view == "starters":
-        placeholders = ",".join(["?"] * len(id_list))
-        c.execute(f"DELETE FROM new_starters WHERE id IN ({placeholders})", id_list)
-    else:
-        placeholders = ",".join(["?"] * len(id_list))
-        c.execute(f"DELETE FROM registrations WHERE id IN ({placeholders})", id_list)
-
-    conn.commit()
-    conn.close()
-
-    return redirect(url_for("admin_dashboard", view=view, q=q, page=page))
 
 
 @app.route("/admin/export-candidates")
@@ -572,8 +483,7 @@ def export_candidates_csv():
     output = BytesIO(si.getvalue().encode("utf-8"))
     output.seek(0)
 
-    return send_file(
-        output,
+    return send_file(output,
         mimetype="text/csv",
         as_attachment=True,
         download_name="candidates.csv"
@@ -601,8 +511,7 @@ def export_contacts_csv():
     output = BytesIO(si.getvalue().encode("utf-8"))
     output.seek(0)
 
-    return send_file(
-        output,
+    return send_file(output,
         mimetype="text/csv",
         as_attachment=True,
         download_name="contacts.csv"
