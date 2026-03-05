@@ -5,6 +5,30 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Register - Vale Recruitment</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+  <style>
+    .form-card input[type="tel"],
+    .form-card input[type="email"],
+    .form-card input[type="text"],
+    .form-card input[type="number"],
+    .form-card select,
+    .form-card textarea {
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .file-row{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .file-row .file-status{
+      font-size:13px;
+      color:#56627a;
+      font-weight:700;
+    }
+  </style>
 </head>
 <body>
 
@@ -16,20 +40,11 @@
       <div class="tag">Nationwide Construction Recruitment</div>
     </div>
   </a>
-
-  <nav class="menu">
-    <a href="/about">About</a>
-    <a href="/services">Services</a>
-    <a href="/candidates">Candidates</a>
-    <a href="/employers">Employers</a>
-    <a href="/contact">Contact</a>
-    <a class="btn" href="/register">Register</a>
-  </nav>
 </header>
 
 <main class="container">
-  <h1>Candidate Registration</h1>
-  <p class="muted">Fill in your details and we’ll contact you about suitable work.</p>
+  <h1>Register</h1>
+  <p class="muted">Complete the form below and we’ll contact you about work opportunities.</p>
 
   {% if error %}
     <div class="alert">{{ error }}</div>
@@ -40,37 +55,37 @@
     <div class="form-grid">
       <div class="field">
         <label>First Name *</label>
-        <input type="text" name="first_name" required>
+        <input type="text" name="first_name" required autocomplete="given-name">
       </div>
 
       <div class="field">
         <label>Last Name *</label>
-        <input type="text" name="last_name" required>
+        <input type="text" name="last_name" required autocomplete="family-name">
       </div>
 
       <div class="field">
         <label>Email *</label>
-        <input type="email" name="email" required>
+        <input type="email" name="email" required autocomplete="email">
       </div>
 
       <div class="field">
         <label>Phone *</label>
-        <input type="text" name="phone" required>
+        <input type="tel" name="phone" required autocomplete="tel" inputmode="tel">
       </div>
 
       <div class="field">
         <label>Town / Location *</label>
-        <input type="text" name="town" required>
+        <input type="text" name="town" required autocomplete="address-level2">
       </div>
 
       <div class="field">
         <label>Primary Trade *</label>
-        <input type="text" name="primary_trade" maxlength="20" required>
+        <input type="text" name="primary_trade" required>
       </div>
 
-      <div class="field">
+      <div class="field full">
         <label>Primary Ticket *</label>
-        <input type="text" name="primary_ticket" maxlength="20" required>
+        <input type="text" name="primary_ticket" required>
       </div>
 
       <div class="field full">
@@ -84,21 +99,26 @@
         <div class="hint">Allowed: PDF, DOC, DOCX, JPG, PNG • Max 5MB</div>
       </div>
 
-      <!-- ✅ NEW Tickets UI -->
+      <!-- Tickets uploader -->
       <div class="field full">
         <label>Upload Tickets (optional — up to 5 files)</label>
 
-        <!-- This input is ONLY for picking files; we will manage the real files list in JS -->
         <input
           type="file"
-          id="ticketsPicker"
+          id="ticketsPickerR"
           accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
           multiple
+          style="display:none;"
         >
-        <div class="hint">Select up to 5 files total • Allowed: PDF, DOC, DOCX, JPG, PNG • Max 5MB each</div>
 
-        <!-- Selected files list -->
-        <div id="ticketsList" style="
+        <div class="file-row">
+          <button class="btn secondary" type="button" id="ticketsPickBtnR">Choose files</button>
+          <span class="file-status" id="ticketsPickerStatusR">Uploaded 0 files</span>
+        </div>
+
+        <div class="hint">Optional • Up to 5 files total • Allowed: PDF, DOC, DOCX, JPG, PNG • Max 5MB each</div>
+
+        <div id="ticketsListR" style="
           margin-top:10px;
           border:1px solid #e6e6e6;
           border-radius:12px;
@@ -107,23 +127,22 @@
           display:none;
         ">
           <div style="font-weight:700; margin-bottom:8px;">Selected tickets:</div>
-          <div id="ticketsItems" style="display:flex; flex-direction:column; gap:8px;"></div>
+          <div id="ticketsItemsR" style="display:flex; flex-direction:column; gap:8px;"></div>
         </div>
 
-        <!-- Hidden container where we inject the real file inputs named="tickets" -->
-        <div id="ticketsHiddenInputs" style="display:none;"></div>
-
-        <div id="ticketsError" style="margin-top:8px; color:#b00020; font-size:13px; display:none;"></div>
+        <div id="ticketsHiddenInputsR" style="display:none;"></div>
+        <div id="ticketsErrorR" style="margin-top:8px; color:#b00020; font-size:13px; display:none;"></div>
       </div>
 
       <div class="field full">
-        <label style="display:flex; gap:10px; align-items:flex-start; font-weight:700;">
+        <label style="display:flex; gap:10px; align-items:flex-start; font-weight:800;">
           <input type="checkbox" name="consent" required style="margin-top:3px;">
           <span>
             I confirm I have read the <a href="/privacy" target="_blank">Privacy Policy</a> and agree to be contacted about work opportunities.
           </span>
         </label>
       </div>
+
     </div>
 
     <button class="btn btn-wide" type="submit">Submit Registration</button>
@@ -134,14 +153,21 @@
 (function(){
   const MAX_FILES = 5;
 
-  const picker = document.getElementById('ticketsPicker');
-  const listBox = document.getElementById('ticketsList');
-  const itemsWrap = document.getElementById('ticketsItems');
-  const hiddenWrap = document.getElementById('ticketsHiddenInputs');
-  const err = document.getElementById('ticketsError');
+  const picker = document.getElementById('ticketsPickerR');
+  const pickBtn = document.getElementById('ticketsPickBtnR');
+  const pickerStatus = document.getElementById('ticketsPickerStatusR');
 
-  // We keep our own list of File objects
+  const listBox = document.getElementById('ticketsListR');
+  const itemsWrap = document.getElementById('ticketsItemsR');
+  const hiddenWrap = document.getElementById('ticketsHiddenInputsR');
+  const err = document.getElementById('ticketsErrorR');
+
   let files = [];
+
+  function setStatus(){
+    if(!pickerStatus) return;
+    pickerStatus.textContent = `Uploaded ${files.length} file${files.length === 1 ? '' : 's'}`;
+  }
 
   function showError(msg){
     if(!msg){
@@ -154,25 +180,27 @@
   }
 
   function formatBytes(bytes){
-    if (!bytes && bytes !== 0) return '';
     const units = ['B','KB','MB','GB'];
     let i = 0;
-    let n = bytes;
+    let n = bytes || 0;
     while(n >= 1024 && i < units.length-1){ n /= 1024; i++; }
     return `${n.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
   }
 
-  function rebuildHiddenInputs(){
-    // Create real inputs named="tickets" for backend
-    hiddenWrap.innerHTML = '';
+  function isAllowedFile(name){
+    const ext = (name.split('.').pop() || '').toLowerCase();
+    return ['pdf','doc','docx','jpg','jpeg','png'].includes(ext);
+  }
 
-    files.forEach((file, idx) => {
+  function rebuildHiddenInputs(){
+    hiddenWrap.innerHTML = '';
+    files.forEach((file) => {
       const dt = new DataTransfer();
       dt.items.add(file);
 
       const input = document.createElement('input');
       input.type = 'file';
-      input.name = 'tickets'; // backend uses getlist("tickets")
+      input.name = 'tickets';
       input.files = dt.files;
 
       hiddenWrap.appendChild(input);
@@ -180,16 +208,18 @@
   }
 
   function render(){
-    // Show/hide list
+    setStatus();
+
     if(files.length === 0){
       listBox.style.display = 'none';
       itemsWrap.innerHTML = '';
       rebuildHiddenInputs();
       return;
     }
-    listBox.style.display = 'block';
 
+    listBox.style.display = 'block';
     itemsWrap.innerHTML = '';
+
     files.forEach((file, idx) => {
       const row = document.createElement('div');
       row.style.display = 'flex';
@@ -220,14 +250,10 @@
 
       const removeBtn = document.createElement('button');
       removeBtn.type = 'button';
-      removeBtn.setAttribute('aria-label', 'Remove file');
       removeBtn.textContent = '✕';
-      removeBtn.style.border = 'none';
-      removeBtn.style.background = '#0b1b34';
-      removeBtn.style.color = '#fff';
-      removeBtn.style.borderRadius = '8px';
+      removeBtn.className = 'btn';
       removeBtn.style.padding = '8px 10px';
-      removeBtn.style.cursor = 'pointer';
+      removeBtn.style.borderRadius = '8px';
 
       removeBtn.addEventListener('click', () => {
         files.splice(idx, 1);
@@ -243,40 +269,33 @@
     rebuildHiddenInputs();
   }
 
-  function isAllowedFile(name){
-    const ext = (name.split('.').pop() || '').toLowerCase();
-    return ['pdf','doc','docx','jpg','jpeg','png'].includes(ext);
+  if(pickBtn && picker){
+    pickBtn.addEventListener('click', () => picker.click());
   }
 
-  picker.addEventListener('change', () => {
-    const picked = Array.from(picker.files || []);
-    if(picked.length === 0) return;
+  if(picker){
+    picker.addEventListener('change', () => {
+      const picked = Array.from(picker.files || []);
+      if(picked.length === 0) return;
 
-    // Validate + add (without wiping existing)
-    for(const f of picked){
-      if(files.length >= MAX_FILES){
-        showError(`You can upload up to ${MAX_FILES} ticket files.`);
-        break;
+      for(const f of picked){
+        if(files.length >= MAX_FILES){
+          showError(`You can upload up to ${MAX_FILES} ticket files.`);
+          break;
+        }
+        if(!isAllowedFile(f.name)){
+          showError('Invalid file type. Use PDF, DOC, DOCX, JPG or PNG.');
+          continue;
+        }
+        const dup = files.some(x => x.name === f.name && x.size === f.size);
+        if(!dup) files.push(f);
       }
-      if(!isAllowedFile(f.name)){
-        showError('Invalid file type. Use PDF, DOC, DOCX, JPG or PNG.');
-        continue;
-      }
 
-      // Avoid exact duplicates (same name + size) if user re-selects
-      const dup = files.some(x => x.name === f.name && x.size === f.size);
-      if(!dup){
-        files.push(f);
-      }
-    }
+      picker.value = '';
+      render();
+    });
+  }
 
-    // Reset picker so selecting the same file again still triggers change
-    picker.value = '';
-
-    render();
-  });
-
-  // Initial render
   render();
 })();
 </script>
