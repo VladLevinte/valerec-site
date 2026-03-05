@@ -7,7 +7,6 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 
   <style>
-    /* Fix: make tel/email inputs same width as others even if CSS targets only text */
     .form-card input[type="tel"],
     .form-card input[type="email"],
     .form-card input[type="text"],
@@ -103,6 +102,15 @@
         <div class="hint">Allowed: JPG, PNG, PDF • Max 5MB</div>
       </div>
 
+      <!-- ✅ NEW: Share code (optional) -->
+      <div class="field full">
+        <label>Share code (optional)</label>
+        <input type="text" name="share_code" placeholder="Example: S1234-5678-9012-3456">
+        <div class="hint">
+          If you do not have a UK passport or UK birth certificate, please provide your Home Office share code (Right to Work).
+        </div>
+      </div>
+
       <!-- ✅ OPTIONAL: Additional tickets upload (up to 5) -->
       <div class="field full">
         <label>Upload Tickets (optional — up to 5 files)</label>
@@ -181,7 +189,7 @@
 
       const input = document.createElement('input');
       input.type = 'file';
-      input.name = 'tickets';   // backend uses getlist("tickets")
+      input.name = 'tickets';
       input.files = dt.files;
 
       hiddenWrap.appendChild(input);
