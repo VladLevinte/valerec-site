@@ -358,7 +358,46 @@ def thanks():
 @app.route("/admin/download/<path:filename>")
 @admin_required
 def admin_download(filename):
-    return send_from_directory(UPLOAD_FOLDER, filename, as_attachment=True)
+    # default: keep original filename
+    download_name = filename
+
+    # If it's a Ticket file, rename download to: "Ticket X - Full Name.ext"
+    # Your saved ticket filenames look like:
+    #   First_Last_TICKET1_original.ext
+    #   First_Last_STARTER_TICKET2_timestamp_original.ext
+    try:
+        base = os.path.basename(filename)
+
+        # detect whether it's a ticket and extract ticket number + name
+        if "_TICKET" in base:
+            parts = base.split("_")
+            # first and last name are usually first 2 parts
+            first = parts[0] if len(parts) > 0 else ""
+            last  = parts[1] if len(parts) > 1 else ""
+            full_name = (first + " " + last).strip()
+
+            # extract ticket number after "TICKET"
+            # handles "TICKET1" and "STARTER_TICKET1"
+            ticket_num = None
+            for p in parts:
+                if p.startswith("TICKET"):
+                    ticket_num = p.replace("TICKET", "")
+                    break
+
+            # file extension
+            _, ext = os.path.splitext(base)
+
+            if ticket_num and full_name:
+                download_name = f"Ticket {ticket_num} - {full_name}{ext}"
+    except Exception:
+        pass
+
+    return send_from_directory(
+        UPLOAD_FOLDER,
+        filename,
+        as_attachment=True,
+        download_name=download_name
+    )
 
 
 @app.route("/admin/starter-notes/<int:starter_id>", methods=["POST"])
@@ -520,3 +559,4 @@ def export_contacts_csv():
 
 if __name__ == "__main__":
     app.run()
+
