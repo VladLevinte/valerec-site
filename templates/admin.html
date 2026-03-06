@@ -30,7 +30,10 @@ html, body { max-width: 100%; overflow-x: hidden; }
 }
 .btn:hover{ opacity: .88; }
 .btn.secondary{ background: #1f2f4d; }
-.btn.light{ background: #e9eef7; color:#0b1b34; }
+.btn.light{
+  background: #e9eef7;
+  color: #0b1b34 !important;   /* ✅ fix blurred/white text */
+}
 .btn.light:hover{ opacity: .95; }
 
 .top-actions{ display:flex; flex-wrap:wrap; gap:10px; margin: 14px 0 10px; }
@@ -148,6 +151,14 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .admin-table tbody tr:nth-child(even){ background:#fafafa; }
 .admin-table tbody tr:hover{ background:#f2f6ff; }
 
+/* ✅ VC checked row */
+.admin-table tbody tr.vc-checked{
+  background: #eaf7ee !important;
+}
+.admin-table tbody tr.vc-checked:hover{
+  background: #def1e4 !important;
+}
+
 .table-link{ color:#0b1b34; text-decoration: underline; }
 .table-link:hover{ opacity: .85; }
 
@@ -162,7 +173,8 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .col-ticket{ width: 145px; }
 .col-additional{ width: 240px; }
 .col-cv{ width: 90px; }
-.col-tickets{ width: 200px; }
+.col-tickets{ width: 170px; }
+.col-vc{ width: 54px; text-align:center; }
 
 .col-ni{ width: 120px; }
 .col-sort{ width: 92px; }
@@ -349,11 +361,12 @@ html, body { max-width: 100%; overflow-x: hidden; }
               <th class="col-additional">Additional skills</th>
               <th class="col-cv">CV</th>
               <th class="col-tickets">Tickets</th>
+              <th class="col-vc">VC</th>
             </tr>
           </thead>
           <tbody>
             {% for c in candidates %}
-            <tr class="data-row" data-id="{{ c['id'] }}">
+            <tr class="data-row {% if c['vc_checked'] %}vc-checked{% endif %}" data-id="{{ c['id'] }}">
               <td class="col-select"><input type="checkbox" class="row-check"></td>
 
               <td data-col="date">{{ c["created_date"] }}</td>
@@ -381,6 +394,10 @@ html, body { max-width: 100%; overflow-x: hidden; }
                 {% else %}
                   —
                 {% endif %}
+              </td>
+
+              <td class="col-vc">
+                <input type="checkbox" class="vc-check" data-view="candidates" data-id="{{ c['id'] }}" {% if c['vc_checked'] %}checked{% endif %}>
               </td>
             </tr>
             {% endfor %}
@@ -461,11 +478,12 @@ html, body { max-width: 100%; overflow-x: hidden; }
               <th class="col-acc">Account</th>
               <th class="col-id">ID</th>
               <th class="col-files">Tickets</th>
+              <th class="col-vc">VC</th>
             </tr>
           </thead>
           <tbody>
             {% for s in starters %}
-            <tr class="starter-row" data-id="{{ s['id'] }}"
+            <tr class="starter-row {% if s['vc_checked'] %}vc-checked{% endif %}" data-id="{{ s['id'] }}"
                 data-name="{{ s['first_name'] }} {{ s['last_name'] }}"
                 data-phone="{{ s['phone'] }}"
                 data-email="{{ s['email'] }}"
@@ -512,17 +530,21 @@ html, body { max-width: 100%; overflow-x: hidden; }
 
               <td>
                 {% if s["tickets_files"] and s["tickets_files"]|length > 0 %}
-{% for f in s["tickets_files"] %}
-  <a class="table-link" href="{{ url_for('admin_download', filename=f) }}">Ticket {{ loop.index }}</a>{% if not loop.last %}<br>{% endif %}
-{% endfor %}
+                  {% for f in s["tickets_files"] %}
+                    <a class="table-link" href="{{ url_for('admin_download', filename=f) }}">Ticket {{ loop.index }}</a>{% if not loop.last %}<br>{% endif %}
+                  {% endfor %}
                 {% else %}
                   —
                 {% endif %}
               </td>
+
+              <td class="col-vc">
+                <input type="checkbox" class="vc-check" data-view="starters" data-id="{{ s['id'] }}" {% if s['vc_checked'] %}checked{% endif %}>
+              </td>
             </tr>
 
             <tr class="expand-row" data-expand-for="{{ s['id'] }}" style="display:none;">
-              <td colspan="15">
+              <td colspan="16">
                 <div class="expand-panel">
 
                   <div class="panel-grid">
@@ -910,12 +932,49 @@ Account number ${acc}${shareLine}`.trim();
     });
   }
 
+  // ✅ VC toggle
+  function setupVcChecks(){
+    document.querySelectorAll(".vc-check").forEach(cb => {
+      cb.addEventListener("change", async () => {
+        const row = cb.closest("tr");
+        const checked = cb.checked;
+        const payload = {
+          view: cb.dataset.view,
+          id: cb.dataset.id,
+          checked: checked
+        };
+
+        try{
+          const res = await fetch("/admin/toggle-vc", {
+            method: "POST",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify(payload)
+          });
+          const js = await res.json();
+
+          if(js && js.ok){
+            if(checked){
+              row.classList.add("vc-checked");
+            }else{
+              row.classList.remove("vc-checked");
+            }
+          }else{
+            cb.checked = !checked;
+          }
+        }catch(e){
+          cb.checked = !checked;
+        }
+      });
+    });
+  }
+
   setupMaster("masterRowCheckC", "candidatesTable");
   setupMaster("masterRowCheckS", "startersTable");
 
   setupCopyCandidates();
   setupCopyStarters();
   setupStarterExpand();
+  setupVcChecks();
 
   makeResizable(document.getElementById("candidatesTable"));
   makeResizable(document.getElementById("startersTable"));
@@ -923,5 +982,3 @@ Account number ${acc}${shareLine}`.trim();
 </script>
 
 {% endblock %}
-
-
