@@ -449,29 +449,45 @@ def admin_dashboard():
     page = request.args.get("page", 1, type=int)
     view = request.args.get("view", "candidates")
     q = (request.args.get("q") or "").strip()
+    vc_filter = (request.args.get("vc_filter") or "all").strip()
 
     conn = db_connect()
     c = conn.cursor()
 
     if view == "starters":
-        where = ""
+        conditions = []
         params = []
+
         if q:
-            where = """
-              WHERE first_name LIKE ? OR last_name LIKE ? OR email LIKE ? OR phone LIKE ?
-                 OR town LIKE ? OR primary_trade LIKE ? OR primary_ticket LIKE ?
-                 OR utr LIKE ? OR national_insurance LIKE ? OR sort_code LIKE ?
-                 OR account_number LIKE ? OR sharecode LIKE ?
-            """
             like = f"%{q}%"
-            params = [like]*12
+            conditions.append("""
+                (
+                    first_name LIKE ? OR last_name LIKE ? OR email LIKE ? OR phone LIKE ?
+                    OR town LIKE ? OR primary_trade LIKE ? OR primary_ticket LIKE ?
+                    OR utr LIKE ? OR national_insurance LIKE ? OR sort_code LIKE ?
+                    OR account_number LIKE ? OR sharecode LIKE ?
+                )
+            """)
+            params.extend([like] * 12)
+
+        if vc_filter == "checked":
+            conditions.append("vc_checked = 1")
+        elif vc_filter == "unchecked":
+            conditions.append("(vc_checked = 0 OR vc_checked IS NULL)")
+
+        where = ""
+        if conditions:
+            where = "WHERE " + " AND ".join(conditions)
 
         c.execute(f"SELECT COUNT(*) AS cnt FROM new_starters {where}", params)
         total = c.fetchone()["cnt"]
         total_pages = max(1, math.ceil(total / per_page))
         offset = (page - 1) * per_page
 
-        c.execute(f"SELECT * FROM new_starters {where} ORDER BY id DESC LIMIT ? OFFSET ?", params + [per_page, offset])
+        c.execute(
+            f"SELECT * FROM new_starters {where} ORDER BY id DESC LIMIT ? OFFSET ?",
+            params + [per_page, offset]
+        )
         rows = c.fetchall()
         starters = [dict(r) for r in rows]
 
@@ -480,26 +496,49 @@ def admin_dashboard():
             s["tickets_files"] = [x for x in raw.split("|") if x] if raw else []
 
         conn.close()
-        return render_template("admin.html", view="starters", starters=starters, candidates=[],
-                               page=page, total_pages=total_pages, q=q)
+        return render_template(
+            "admin.html",
+            view="starters",
+            starters=starters,
+            candidates=[],
+            page=page,
+            total_pages=total_pages,
+            q=q,
+            vc_filter=vc_filter
+        )
+
+    conditions = []
+    params = []
+
+    if q:
+        like = f"%{q}%"
+        conditions.append("""
+            (
+                first_name LIKE ? OR last_name LIKE ? OR email LIKE ? OR phone LIKE ?
+                OR town LIKE ? OR primary_trade LIKE ? OR primary_ticket LIKE ?
+                OR additional_info LIKE ? OR tickets_filename LIKE ?
+            )
+        """)
+        params.extend([like] * 9)
+
+    if vc_filter == "checked":
+        conditions.append("vc_checked = 1")
+    elif vc_filter == "unchecked":
+        conditions.append("(vc_checked = 0 OR vc_checked IS NULL)")
 
     where = ""
-    params = []
-    if q:
-        where = """
-          WHERE first_name LIKE ? OR last_name LIKE ? OR email LIKE ? OR phone LIKE ?
-             OR town LIKE ? OR primary_trade LIKE ? OR primary_ticket LIKE ?
-             OR additional_info LIKE ? OR tickets_filename LIKE ?
-        """
-        like = f"%{q}%"
-        params = [like]*9
+    if conditions:
+        where = "WHERE " + " AND ".join(conditions)
 
     c.execute(f"SELECT COUNT(*) AS cnt FROM registrations {where}", params)
     total = c.fetchone()["cnt"]
     total_pages = max(1, math.ceil(total / per_page))
     offset = (page - 1) * per_page
 
-    c.execute(f"SELECT * FROM registrations {where} ORDER BY id DESC LIMIT ? OFFSET ?", params + [per_page, offset])
+    c.execute(
+        f"SELECT * FROM registrations {where} ORDER BY id DESC LIMIT ? OFFSET ?",
+        params + [per_page, offset]
+    )
     rows = c.fetchall()
     candidates = [dict(r) for r in rows]
 
@@ -509,13 +548,15 @@ def admin_dashboard():
 
     conn.close()
 
-    return render_template("admin.html",
+    return render_template(
+        "admin.html",
         view="candidates",
         candidates=candidates,
         starters=[],
         page=page,
         total_pages=total_pages,
-        q=q
+        q=q,
+        vc_filter=vc_filter
     )
 
 
@@ -577,3 +618,4 @@ def export_contacts_csv():
 
 if __name__ == "__main__":
     app.run()
+
