@@ -1,5 +1,4 @@
 from flask import Flask, render_template, request, redirect, url_for, send_file, send_from_directory, session, jsonify
-from flask import Response
 import sqlite3
 import os
 import csv
@@ -120,6 +119,10 @@ def init_db():
     ensure_column(conn, "new_starters", "start_date", "TEXT")
     ensure_column(conn, "new_starters", "job_postcode", "TEXT")
     ensure_column(conn, "new_starters", "pay_rate", "TEXT")
+
+    # ✅ VC checkbox columns
+    ensure_column(conn, "registrations", "vc_checked", "INTEGER DEFAULT 0")
+    ensure_column(conn, "new_starters", "vc_checked", "INTEGER DEFAULT 0")
 
     conn.close()
 
@@ -271,10 +274,10 @@ def register():
         c.execute("""
             INSERT INTO registrations
             (first_name,last_name,email,phone,town,primary_trade,primary_ticket,
-             additional_info,cv_filename,tickets_filename,consent,consent_at,created_date)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+             additional_info,cv_filename,tickets_filename,consent,consent_at,created_date,vc_checked)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """,(first_name,last_name,email,phone,town,primary_trade,primary_ticket,
-             additional_info,cv_filename,tickets_filename,consent,now_ts,now_date))
+             additional_info,cv_filename,tickets_filename,consent,now_ts,now_date,0))
 
         conn.commit()
         conn.close()
@@ -337,11 +340,11 @@ def candidate_register():
             INSERT INTO new_starters
             (first_name,last_name,email,phone,town,primary_trade,primary_ticket,
              utr,sharecode,national_insurance,sort_code,account_number,
-             id_document_filename,tickets_filename,created_date)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             id_document_filename,tickets_filename,created_date,vc_checked)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """,(first_name,last_name,email,phone,town,primary_trade,primary_ticket,
              utr,sharecode,national_insurance,sort_code,account_number,
-             id_document_filename,tickets_filename,created_date))
+             id_document_filename,tickets_filename,created_date,0))
 
         conn.commit()
         conn.close()
@@ -359,33 +362,23 @@ def thanks():
 @app.route("/admin/download/<path:filename>")
 @admin_required
 def admin_download(filename):
-    # default: keep original filename
     download_name = filename
 
-    # If it's a Ticket file, rename download to: "Ticket X - Full Name.ext"
-    # Your saved ticket filenames look like:
-    #   First_Last_TICKET1_original.ext
-    #   First_Last_STARTER_TICKET2_timestamp_original.ext
     try:
         base = os.path.basename(filename)
 
-        # detect whether it's a ticket and extract ticket number + name
         if "_TICKET" in base:
             parts = base.split("_")
-            # first and last name are usually first 2 parts
             first = parts[0] if len(parts) > 0 else ""
-            last  = parts[1] if len(parts) > 1 else ""
+            last = parts[1] if len(parts) > 1 else ""
             full_name = (first + " " + last).strip()
 
-            # extract ticket number after "TICKET"
-            # handles "TICKET1" and "STARTER_TICKET1"
             ticket_num = None
             for p in parts:
                 if p.startswith("TICKET"):
                     ticket_num = p.replace("TICKET", "")
                     break
 
-            # file extension
             _, ext = os.path.splitext(base)
 
             if ticket_num and full_name:
@@ -406,7 +399,7 @@ def admin_download(filename):
 def starter_notes(starter_id):
     data = request.get_json(force=True) or {}
     client_name = (data.get("client_name") or "").strip()
-    start_date = (data.get("start_date") or "").strip()      # YYYY-MM-DD from date picker
+    start_date = (data.get("start_date") or "").strip()
     job_postcode = (data.get("job_postcode") or "").strip()
     pay_rate = (data.get("pay_rate") or "").strip()
 
@@ -417,6 +410,32 @@ def starter_notes(starter_id):
         SET client_name=?, start_date=?, job_postcode=?, pay_rate=?
         WHERE id=?
     """,(client_name, start_date, job_postcode, pay_rate, starter_id))
+    conn.commit()
+    conn.close()
+
+    return jsonify({"ok": True})
+
+
+# ✅ VC toggle route
+@app.route("/admin/toggle-vc", methods=["POST"])
+@admin_required
+def toggle_vc():
+    data = request.get_json(force=True) or {}
+    view = (data.get("view") or "").strip()
+    record_id = data.get("id")
+    checked = 1 if data.get("checked") else 0
+
+    if view not in ("candidates", "starters") or not record_id:
+        return jsonify({"ok": False}), 400
+
+    conn = db_connect()
+    c = conn.cursor()
+
+    if view == "candidates":
+        c.execute("UPDATE registrations SET vc_checked=? WHERE id=?", (checked, record_id))
+    else:
+        c.execute("UPDATE new_starters SET vc_checked=? WHERE id=?", (checked, record_id))
+
     conn.commit()
     conn.close()
 
@@ -456,7 +475,6 @@ def admin_dashboard():
         rows = c.fetchall()
         starters = [dict(r) for r in rows]
 
-        # split tickets
         for s in starters:
             raw = s.get("tickets_filename") or ""
             s["tickets_files"] = [x for x in raw.split("|") if x] if raw else []
@@ -465,7 +483,6 @@ def admin_dashboard():
         return render_template("admin.html", view="starters", starters=starters, candidates=[],
                                page=page, total_pages=total_pages, q=q)
 
-    # candidates view
     where = ""
     params = []
     if q:
@@ -560,5 +577,3 @@ def export_contacts_csv():
 
 if __name__ == "__main__":
     app.run()
-
-
