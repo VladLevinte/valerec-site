@@ -32,7 +32,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .btn.secondary{ background: #1f2f4d; }
 .btn.light{
   background: #e9eef7;
-  color: #0b1b34 !important;   /* ✅ fix blurred/white text */
+  color: #0b1b34 !important;
 }
 .btn.light:hover{ opacity: .95; }
 
@@ -151,7 +151,6 @@ html, body { max-width: 100%; overflow-x: hidden; }
 .admin-table tbody tr:nth-child(even){ background:#fafafa; }
 .admin-table tbody tr:hover{ background:#f2f6ff; }
 
-/* ✅ VC checked row */
 .admin-table tbody tr.vc-checked{
   background: #eaf7ee !important;
 }
@@ -290,16 +289,25 @@ html, body { max-width: 100%; overflow-x: hidden; }
     </div>
 
     <div class="tabs">
-      <a class="tab {% if view == 'candidates' %}active{% endif %}" href="{{ url_for('admin_dashboard', view='candidates', page=1, q=q) }}">New Candidates</a>
-      <a class="tab {% if view == 'starters' %}active{% endif %}" href="{{ url_for('admin_dashboard', view='starters', page=1, q=q) }}">New Starters</a>
+      <a class="tab {% if view == 'candidates' %}active{% endif %}" href="{{ url_for('admin_dashboard', view='candidates', page=1, q=q, vc_filter=vc_filter) }}">New Candidates</a>
+      <a class="tab {% if view == 'starters' %}active{% endif %}" href="{{ url_for('admin_dashboard', view='starters', page=1, q=q, vc_filter=vc_filter) }}">New Starters</a>
     </div>
 
     <form class="search-row" method="GET" action="{{ url_for('admin_dashboard') }}">
       <input type="hidden" name="view" value="{{ view }}">
       <input type="hidden" name="page" value="1">
+
       <input name="q" value="{{ q }}" placeholder="Search (name, email, phone, town, trade, tickets, NI, etc.)">
+
+      <select name="vc_filter" style="padding:10px 12px; border:1px solid #d8deea; border-radius:10px; font-size:13px; background:#fff;">
+        <option value="all" {% if vc_filter == 'all' %}selected{% endif %}>All VC</option>
+        <option value="unchecked" {% if vc_filter == 'unchecked' %}selected{% endif %}>VC unticked only</option>
+        <option value="checked" {% if vc_filter == 'checked' %}selected{% endif %}>VC ticked only</option>
+      </select>
+
       <button class="btn secondary" type="submit">Search</button>
-      {% if q %}
+
+      {% if q or vc_filter != 'all' %}
         <a class="btn light" href="{{ url_for('admin_dashboard', view=view, page=1) }}">Clear</a>
       {% endif %}
 
@@ -340,7 +348,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
           {% if p == page %}
             <span class="page-pill active">{{ p }}</span>
           {% else %}
-            <a class="page-pill" href="{{ url_for('admin_dashboard', view='candidates', page=p, q=q) }}">{{ p }}</a>
+            <a class="page-pill" href="{{ url_for('admin_dashboard', view='candidates', page=p, q=q, vc_filter=vc_filter) }}">{{ p }}</a>
           {% endif %}
         {% endfor %}
         <span class="small-note">Page {{ page }} of {{ total_pages }}</span>
@@ -410,7 +418,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
           {% if p == page %}
             <span class="page-pill active">{{ p }}</span>
           {% else %}
-            <a class="page-pill" href="{{ url_for('admin_dashboard', view='candidates', page=p, q=q) }}">{{ p }}</a>
+            <a class="page-pill" href="{{ url_for('admin_dashboard', view='candidates', page=p, q=q, vc_filter=vc_filter) }}">{{ p }}</a>
           {% endif %}
         {% endfor %}
       </div>
@@ -453,7 +461,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
           {% if p == page %}
             <span class="page-pill active">{{ p }}</span>
           {% else %}
-            <a class="page-pill" href="{{ url_for('admin_dashboard', view='starters', page=p, q=q) }}">{{ p }}</a>
+            <a class="page-pill" href="{{ url_for('admin_dashboard', view='starters', page=p, q=q, vc_filter=vc_filter) }}">{{ p }}</a>
           {% endif %}
         {% endfor %}
         <span class="small-note">Page {{ page }} of {{ total_pages }}</span>
@@ -596,7 +604,7 @@ html, body { max-width: 100%; overflow-x: hidden; }
           {% if p == page %}
             <span class="page-pill active">{{ p }}</span>
           {% else %}
-            <a class="page-pill" href="{{ url_for('admin_dashboard', view='starters', page=p, q=q) }}">{{ p }}</a>
+            <a class="page-pill" href="{{ url_for('admin_dashboard', view='starters', page=p, q=q, vc_filter=vc_filter) }}">{{ p }}</a>
           {% endif %}
         {% endfor %}
       </div>
@@ -932,7 +940,6 @@ Account number ${acc}${shareLine}`.trim();
     });
   }
 
-  // ✅ VC toggle
   function setupVcChecks(){
     document.querySelectorAll(".vc-check").forEach(cb => {
       cb.addEventListener("change", async () => {
