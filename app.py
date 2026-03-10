@@ -120,7 +120,7 @@ def init_db():
     ensure_column(conn, "new_starters", "job_postcode", "TEXT")
     ensure_column(conn, "new_starters", "pay_rate", "TEXT")
 
-    # ✅ VC checkbox columns
+    # VC checkbox columns
     ensure_column(conn, "registrations", "vc_checked", "INTEGER DEFAULT 0")
     ensure_column(conn, "new_starters", "vc_checked", "INTEGER DEFAULT 0")
 
@@ -211,7 +211,7 @@ def contact():
             INSERT INTO contact_requests
             (name,email,phone,company,message,created_at,created_date,consent,consent_at)
             VALUES (?,?,?,?,?,?,?,?,?)
-        """,(name,email,phone,company,message,now_ts,now_date,consent,now_ts))
+        """, (name, email, phone, company, message, now_ts, now_date, consent, now_ts))
 
         conn.commit()
         conn.close()
@@ -221,7 +221,7 @@ def contact():
     return render_template("contact.html", error=error)
 
 
-@app.route("/register", methods=["GET","POST"])
+@app.route("/register", methods=["GET", "POST"])
 def register():
     error = None
 
@@ -233,11 +233,28 @@ def register():
         town = request.form["town"]
         primary_trade = request.form["primary_trade"]
         primary_ticket = request.form["primary_ticket"]
-        additional_info = request.form.get("additional_info","")
+        additional_info = request.form.get("additional_info", "")
 
         consent = 1 if request.form.get("consent") == "on" else 0
         if consent != 1:
             return render_template("register.html", error="Please confirm privacy policy.")
+
+        # Duplicate check
+        conn = db_connect()
+        c = conn.cursor()
+        c.execute("""
+            SELECT id FROM registrations
+            WHERE LOWER(email) = LOWER(?) OR phone = ?
+            LIMIT 1
+        """, (email.strip(), phone.strip()))
+        existing = c.fetchone()
+        conn.close()
+
+        if existing:
+            return render_template(
+                "register.html",
+                error="You are already registered with Vale Recruitment. If you need to update your details, please contact us directly."
+            )
 
         cv_filename = None
         tickets_filename = None
@@ -276,8 +293,8 @@ def register():
             (first_name,last_name,email,phone,town,primary_trade,primary_ticket,
              additional_info,cv_filename,tickets_filename,consent,consent_at,created_date,vc_checked)
             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-        """,(first_name,last_name,email,phone,town,primary_trade,primary_ticket,
-             additional_info,cv_filename,tickets_filename,consent,now_ts,now_date,0))
+        """, (first_name, last_name, email, phone, town, primary_trade, primary_ticket,
+              additional_info, cv_filename, tickets_filename, consent, now_ts, now_date, 0))
 
         conn.commit()
         conn.close()
@@ -287,7 +304,7 @@ def register():
     return render_template("register.html", error=error)
 
 
-@app.route("/candidateRegister", methods=["GET","POST"])
+@app.route("/candidateRegister", methods=["GET", "POST"])
 def candidate_register():
     if request.method == "POST":
         first_name = request.form["first_name"]
@@ -298,8 +315,8 @@ def candidate_register():
         primary_trade = request.form["primary_trade"]
         primary_ticket = request.form["primary_ticket"]
 
-        utr = request.form.get("utr","").strip()
-        sharecode = request.form.get("sharecode","").strip()
+        utr = request.form.get("utr", "").strip()
+        sharecode = request.form.get("sharecode", "").strip()
 
         national_insurance = request.form["national_insurance"]
         sort_code = request.form["sort_code"]
@@ -342,9 +359,9 @@ def candidate_register():
              utr,sharecode,national_insurance,sort_code,account_number,
              id_document_filename,tickets_filename,created_date,vc_checked)
             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-        """,(first_name,last_name,email,phone,town,primary_trade,primary_ticket,
-             utr,sharecode,national_insurance,sort_code,account_number,
-             id_document_filename,tickets_filename,created_date,0))
+        """, (first_name, last_name, email, phone, town, primary_trade, primary_ticket,
+              utr, sharecode, national_insurance, sort_code, account_number,
+              id_document_filename, tickets_filename, created_date, 0))
 
         conn.commit()
         conn.close()
@@ -409,14 +426,13 @@ def starter_notes(starter_id):
         UPDATE new_starters
         SET client_name=?, start_date=?, job_postcode=?, pay_rate=?
         WHERE id=?
-    """,(client_name, start_date, job_postcode, pay_rate, starter_id))
+    """, (client_name, start_date, job_postcode, pay_rate, starter_id))
     conn.commit()
     conn.close()
 
     return jsonify({"ok": True})
 
 
-# ✅ VC toggle route
 @app.route("/admin/toggle-vc", methods=["POST"])
 @admin_required
 def toggle_vc():
@@ -581,7 +597,8 @@ def export_candidates_csv():
     output = BytesIO(si.getvalue().encode("utf-8"))
     output.seek(0)
 
-    return send_file(output,
+    return send_file(
+        output,
         mimetype="text/csv",
         as_attachment=True,
         download_name="candidates.csv"
@@ -609,7 +626,8 @@ def export_contacts_csv():
     output = BytesIO(si.getvalue().encode("utf-8"))
     output.seek(0)
 
-    return send_file(output,
+    return send_file(
+        output,
         mimetype="text/csv",
         as_attachment=True,
         download_name="contacts.csv"
@@ -618,4 +636,3 @@ def export_contacts_csv():
 
 if __name__ == "__main__":
     app.run()
-
